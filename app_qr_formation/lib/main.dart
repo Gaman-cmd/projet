@@ -10,6 +10,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: LoginPage(), // Définissez LoginPage comme écran de démarrage
+      debugShowCheckedModeBanner: false, // Ajout de cette ligne pour supprimer le bandeau DEBUG
     );
   }
 }
