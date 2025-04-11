@@ -2,21 +2,47 @@ from django.db import models
 
 # Create your models here.
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.db import models
+from django.utils import timezone
 
 # 1. Utilisateur (Admin)
-class Utilisateur(models.Model):
+
+class UtilisateurManager(BaseUserManager):
+    def create_user(self, email, mot_de_passe=None, **extra_fields):
+        if not email:
+            raise ValueError("L'email est obligatoire")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(mot_de_passe)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, mot_de_passe=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("actif", True)
+
+        return self.create_user(email, mot_de_passe, **extra_fields)
+
+class Utilisateur(AbstractBaseUser, PermissionsMixin):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
-    mot_de_passe = models.CharField(max_length=128)
     date_creation = models.DateTimeField(auto_now_add=True)
     derniere_connexion = models.DateTimeField(blank=True, null=True)
     actif = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)  # nécessaire pour l'admin
+
+    objects = UtilisateurManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['nom', 'prenom']
 
     def __str__(self):
         return f"{self.prenom} {self.nom}"
+
 
 
 # 2. Formation
