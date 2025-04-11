@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'Formation.dart'; // Importez votre page Formation
 import 'participants_page.dart'; // Importez votre page Participants (si vous en avez une)
 //import 'profil_page.dart'; // Importez votre page Profil (si vous en avez une)
-
+import 'ajout_participant.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -269,13 +269,16 @@ class ParticipantsPage extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Action pour ajouter un nouveau participant
-        },
-        child: Icon(Icons.person_add),
-        backgroundColor: Colors.blue,
-      ),
+ floatingActionButton: FloatingActionButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddParticipantPage()),
+    );
+  },
+  child: Icon(Icons.person_add),
+  backgroundColor: Colors.blue,
+),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }

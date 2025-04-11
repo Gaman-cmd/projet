@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'ajout_participant.dart'; // Assurez-vous que le chemin est correct
 
 class ParticipantsPage extends StatelessWidget {
   @override
@@ -76,13 +77,16 @@ class ParticipantsPage extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Action pour ajouter un nouveau participant
-        },
-        child: Icon(Icons.person_add),
-        backgroundColor: Colors.blue,
-      ),
+   floatingActionButton: FloatingActionButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddParticipantPage()),
+    );
+  },
+  child: Icon(Icons.person_add),
+  backgroundColor: Colors.blue,
+),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
