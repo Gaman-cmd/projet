@@ -2,48 +2,22 @@ from django.db import models
 
 # Create your models here.
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
 from django.utils import timezone
 
 # 1. Utilisateur (Admin)
+# api/models.py
+from django.db import models
 
-class UtilisateurManager(BaseUserManager):
-    def create_user(self, email, mot_de_passe=None, **extra_fields):
-        if not email:
-            raise ValueError("L'email est obligatoire")
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(mot_de_passe)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, mot_de_passe=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("actif", True)
-
-        return self.create_user(email, mot_de_passe, **extra_fields)
-
-class Utilisateur(AbstractBaseUser, PermissionsMixin):
+class Utilisateur(models.Model):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    telephone = models.CharField(max_length=20, blank=True, null=True)
-    date_creation = models.DateTimeField(auto_now_add=True)
+    mot_de_passe = models.CharField(max_length=128)
     derniere_connexion = models.DateTimeField(blank=True, null=True)
-    actif = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)  # nécessaire pour l'admin
-
-    objects = UtilisateurManager()
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nom', 'prenom']
 
     def __str__(self):
         return f"{self.prenom} {self.nom}"
-
-
 
 # 2. Formation
 class Formation(models.Model):
@@ -58,7 +32,6 @@ class Formation(models.Model):
     date_debut = models.DateTimeField()
     date_fin = models.DateTimeField()
     lieu = models.CharField(max_length=255, blank=True)
-    salle = models.CharField(max_length=100, blank=True)
     places_total = models.IntegerField()
     places_reservees = models.IntegerField(default=0)
     contact_email = models.EmailField(blank=True)

@@ -1,31 +1,74 @@
-from django.shortcuts import render
-
-# Create your views here.
-
 from django.contrib.auth import authenticate
-from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UtilisateurSerializer
+from rest_framework.response import Response
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from .models import Formation
+from django.utils import timezone
+from .serializers import FormationSerializer
+import jwt
+from django.conf import settings
+from datetime import datetime, timedelta
+
+from django.contrib.auth.models import User
 
 
-class LoginView(APIView):
+class UtilisateurLoginView(APIView):
     def post(self, request):
         email = request.data.get("email")
-        mot_de_passe = request.data.get("mot_de_passe")
+        password = request.data.get("password")
+
+        if not email or not password:
+            return Response({"error": "Email et mot de passe sont requis"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Vérification simple des identifiants
-        if not email or not mot_de_passe:
-            return Response({"error": "Email et mot de passe requis"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email=email)
+            if user.check_password(password):
+                # Supprimer la génération de token
+                return Response({"message": "Authentification réussie"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Mot de passe incorrect"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"error": "Utilisateur non trouvé"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = authenticate(request, username=email, password=mot_de_passe)
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from .models import Formation
+from django.utils import timezone
+from .serializers import FormationSerializer
 
-        if user is not None:
-            # Connexion réussie, tu peux renvoyer un message ou un token
-            return Response({"message": "Login réussi"})
-        else:
-            return Response({"error": "Identifiants invalides"}, status=status.HTTP_401_UNAUTHORIZED)
+class FormationViewSet(viewsets.ModelViewSet):
+    queryset = Formation.objects.all().order_by('-date_creation')
+    serializer_class = FormationSerializer
 
+    def get_queryset(self):
+        queryset = Formation.objects.all()
+        statut = self.request.query_params.get('statut', None)
+        
+        if statut:
+            queryset = queryset.filter(statut=statut)
+        
+        return queryset.order_by('-date_creation')
 
+    @action(detail=False, methods=['get'])
+    def formations_a_venir(self):
+        formations = Formation.objects.filter(
+            date_debut__gt=timezone.now(),
+            statut='a_venir'
+        )
+        serializer = self.get_serializer(formations, many=True)
+        return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def formations_en_cours(self):
+        now = timezone.now()
+        formations = Formation.objects.filter(
+            date_debut__lte=now,
+            date_fin__gte=now,
+            statut='en_cours'
+        )
+        serializer = self.get_serializer(formations, many=True)
+        return Response(serializer.data)
