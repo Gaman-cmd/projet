@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'Formation.dart'; // Importez votre page Formation
-import 'participants_page.dart'; // Importez votre page Participants (si vous en avez une)
-//import 'profil_page.dart'; // Importez votre page Profil (si vous en avez une)
+import 'Formation.dart'; // Importez la page FormationsPage depuis Formation.dart
+import 'participants_page.dart'; // Importez votre page Participants
+import 'services/formation_service.dart'; // Importez le service pour récupérer les formations
+import 'models/formation_model.dart'; // Importez le modèle Formation
 
 class HomePage extends StatefulWidget {
   @override
@@ -13,7 +14,7 @@ class _HomePageState extends State<HomePage> {
 
   final List<Widget> _children = [
     _AccueilPageContent(), // Le contenu de votre page d'accueil
-    FormationsPage(), // Votre page Formations
+    FormationsPage(), // Votre page Formations (importée depuis Formation.dart)
     ParticipantsPage(), // Placeholder pour la page Participants
     ProfilPage(), // Placeholder pour la page Profil
   ];
@@ -52,19 +53,46 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Extrait le contenu de votre page d'accueil dans un StatelessWidget
-class _AccueilPageContent extends StatelessWidget {
-  final List<Map<String, String>> formations = [];
+// Contenu de la page d'accueil
+class _AccueilPageContent extends StatefulWidget {
+  @override
+  __AccueilPageContentState createState() => __AccueilPageContentState();
+}
+
+class __AccueilPageContentState extends State<_AccueilPageContent> {
+  final FormationService _formationService = FormationService();
+  List<Formation> _formations = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFormations();
+  }
+
+  Future<void> _loadFormations() async {
+    try {
+      setState(() => _isLoading = true);
+      final formations = await _formationService.getFormations();
+      setState(() {
+        _formations = formations;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
-        title: Text(
-          'QR APP',
-          style: TextStyle(color: Colors.white),
-        ), // Titre de la page d'accueil
+        title: Text('QR APP', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: Icon(Icons.menu, color: Colors.white),
           onPressed: () {
@@ -72,85 +100,100 @@ class _AccueilPageContent extends StatelessWidget {
           },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                _buildInfoCard('Nombre total de formations', '12'),
-                _buildInfoCard('Nombre de participants actifs', '24'),
-              ],
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text(
-                  'Formations :',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                TextButton(
-                  onPressed: () {
-                    final homePageState =
-                        context.findAncestorStateOfType<_HomePageState>();
-                    if (homePageState != null) {
-                      homePageState.onTabTapped(1);
-                    }
-                  },
-                  child: Text(
-                    'voir tout',
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: formations.length,
-              itemBuilder: (context, index) {
-                final formation = formations[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      body:
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : _error != null
+              ? Center(child: Text('Erreur : $_error'))
+              : SingleChildScrollView(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: <Widget>[
+                        _buildInfoCard(
+                          'Nombre total de formations',
+                          '${_formations.length}',
+                        ),
+                        _buildInfoCard(
+                          'Nombre de participants actifs',
+                          '24',
+                        ), // Exemple statique
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
                         Text(
-                          formation['title']!,
+                          'Formations :',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Row(
-                          children: <Widget>[
-                            Text(
-                              formation['date']!,
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            SizedBox(width: 16),
-                            Text(
-                              formation['participants']!,
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ],
+                        TextButton(
+                          onPressed: () {
+                            final homePageState =
+                                context
+                                    .findAncestorStateOfType<_HomePageState>();
+                            if (homePageState != null) {
+                              homePageState.onTabTapped(1);
+                            }
+                          },
+                          child: Text(
+                            'voir tout',
+                            style: TextStyle(color: Colors.blue),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+                    SizedBox(height: 10),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _formations.length,
+                      itemBuilder: (context, index) {
+                        final formation = _formations[index];
+                        return Card(
+                          margin: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  formation.titre,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Row(
+                                  children: <Widget>[
+                                    Text(
+                                      _formatDate(formation.dateDebut),
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Text(
+                                      '${formation.placesReservees} participants',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
     );
   }
 
@@ -177,6 +220,10 @@ class _AccueilPageContent extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
@@ -246,11 +293,6 @@ class ParticipantsPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: <Widget>[
-                _buildParticipantItem(
-                  initials: 'AB',
-                  name: 'Ali Moussa',
-                  email: 'alimoussa.@exemp.com',
-                ),
                 _buildParticipantItem(
                   initials: 'CE',
                   name: 'Chaibou Elh Issa',
@@ -326,118 +368,5 @@ class ProfilPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(child: Text('Page de Profil'));
-  }
-}
-
-class FormationsPage extends StatelessWidget {
-  // Assurez-vous que le nom correspond à l'import dans HomePage
-  final List<Map<String, String>> formations = [
-    {
-      'title': 'Formations java',
-      'date': '18 mars, 11h:30m',
-      'participants': '25 participants',
-    },
-    {
-      'title': 'Formations python',
-      'date': '20 mars, 14h:30m',
-      'participants': '25 participants',
-    },
-    {
-      'title': 'Formations HTML',
-      'date': '28 mars, 16h:30m',
-      'participants': '25 participants',
-    },
-    {
-      'title': 'Formations sur Powerpoint',
-      'date': '28 mai, 14h:30m',
-      'participants': '15 participants',
-    },
-    {
-      'title': 'Formations sur l\'entreprenariat',
-      'date': '8 janvier, 10h:30m',
-      'participants': '20 participants',
-    },
-    {
-      'title': 'Formations excel',
-      'date': '28 mars, 14h:30m',
-      'participants': '32 participants',
-    },
-    {
-      'title': 'Formations BBD',
-      'date': '28 mars, 14h:30m',
-      'participants': '25 participants',
-    },
-    {
-      'title': 'Formations sur E-commence',
-      'date': '19 mars, 14h:00m',
-      'participants': '35 participants',
-    },
-    {
-      'title': 'Formations IA ',
-      'date': '20 mars, 15h:30m',
-      'participants': '15 participants',
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue,
-        title: Text(
-          'Formations',
-          style: TextStyle(color: Colors.white),
-        ), // Titre 'Formations' uniquement
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: Colors.white),
-          onPressed: () {
-            // Action du menu
-          },
-        ),
-      ),
-      body: ListView.builder(
-        padding: EdgeInsets.all(16.0),
-        itemCount: formations.length,
-        itemBuilder: (context, index) {
-          final formation = formations[index];
-          return Card(
-            margin: EdgeInsets.symmetric(vertical: 8.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    formation['title']!,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        formation['date']!,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      SizedBox(width: 16),
-                      Text(
-                        formation['participants']!,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Action pour ajouter une formation
-        },
-        child: Icon(Icons.add),
-        backgroundColor: Colors.blue,
-      ),
-    );
   }
 }

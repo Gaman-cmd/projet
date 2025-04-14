@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'add_formation_page.dart';
 import 'models/formation_model.dart';
 import 'services/formation_service.dart';
 
@@ -35,7 +36,6 @@ class _FormationsPageState extends State<FormationsPage> {
     }
   }
 
-  // ...existing code...
   Widget _buildFormationCard(Formation formation) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8.0),
@@ -44,13 +44,6 @@ class _FormationsPageState extends State<FormationsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            if (formation.imageUrl.isNotEmpty)
-              Image.network(
-                formation.imageUrl,
-                height: 150,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
             SizedBox(height: 12),
             Text(
               formation.titre,
@@ -157,8 +150,16 @@ class _FormationsPageState extends State<FormationsPage> {
                     (context, index) => _buildFormationCard(_formations[index]),
               ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _loadFormations,
-        child: Icon(Icons.refresh),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddFormationPage()),
+          ).then((_) {
+            // Recharger les formations après l'ajout
+            _loadFormations();
+          });
+        },
+        child: Icon(Icons.add),
         backgroundColor: Colors.blue,
       ),
     );

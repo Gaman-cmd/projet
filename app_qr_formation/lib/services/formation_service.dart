@@ -21,4 +21,18 @@ class FormationService {
       throw Exception('Erreur de connexion: $e');
     }
   }
+
+  Future<void> addFormation(Map<String, dynamic> formationData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/formations/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(formationData),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception(
+        'Erreur lors de l\'ajout de la formation : ${response.body}',
+      );
+    }
+  }
 }
