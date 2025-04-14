@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'Formation.dart'; // Importez la page FormationsPage depuis Formation.dart
+import 'ajout_participant.dart';
 import 'participants_page.dart'; // Importez votre page Participants
 import 'services/formation_service.dart'; // Importez le service pour récupérer les formations
 import 'models/formation_model.dart'; // Importez le modèle Formation
-
+import 'add_formation_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
