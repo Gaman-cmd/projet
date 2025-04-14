@@ -1,6 +1,10 @@
+// ignore_for_file: sort_child_properties_last
+
 import 'package:flutter/material.dart';
 
 class ParticipantsPage extends StatelessWidget {
+  const ParticipantsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,10 +70,26 @@ class ParticipantsPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: <Widget>[
-                _buildParticipantItem(initials: 'AB', name: 'Ali Moussa', email: 'alimoussa.@exemp.com'),
-                _buildParticipantItem(initials: 'CE', name: 'Chaibou Elh Issa', email: 'chaibouissa101@gmail.com'),
-                _buildParticipantItem(initials: 'KY', name: 'Kabirou Yahaya', email: 'kabirouyahaya190@gmail.com'),
-                _buildParticipantItem(initials: 'MI', name: 'Moussa Ismael', email: 'moussaismael121@gmail.com'),
+                _buildParticipantItem(
+                  initials: 'AB',
+                  name: 'Ali Moussa',
+                  email: 'alimoussa.@exemp.com',
+                ),
+                _buildParticipantItem(
+                  initials: 'CE',
+                  name: 'Chaibou Elh Issa',
+                  email: 'chaibouissa101@gmail.com',
+                ),
+                _buildParticipantItem(
+                  initials: 'KY',
+                  name: 'Kabirou Yahaya',
+                  email: 'kabirouyahaya190@gmail.com',
+                ),
+                _buildParticipantItem(
+                  initials: 'MI',
+                  name: 'Moussa Ismael',
+                  email: 'moussaismael121@gmail.com',
+                ),
                 // Ajoutez d'autres participants ici
               ],
             ),
@@ -87,7 +107,11 @@ class ParticipantsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildParticipantItem({required String initials, required String name, required String email}) {
+  Widget _buildParticipantItem({
+    required String initials,
+    required String name,
+    required String email,
+  }) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8.0),
       child: Padding(
@@ -111,10 +135,7 @@ class ParticipantsPage extends StatelessWidget {
                     name,
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  Text(
-                    email,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
+                  Text(email, style: TextStyle(color: Colors.grey[600])),
                 ],
               ),
             ),
