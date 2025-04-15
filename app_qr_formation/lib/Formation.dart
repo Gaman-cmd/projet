@@ -127,7 +127,7 @@ class _FormationsPageState extends State<FormationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 231, 3, 3),
+        backgroundColor: Colors.blue,
         title: Text('Formations', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(

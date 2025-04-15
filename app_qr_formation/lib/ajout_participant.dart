@@ -12,6 +12,7 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
   String _email = '';
   String _phone = '';
   String _birthDate = '';
+  String _Lieufrom = '';
   String? _selectedFormation; // Pour gérer la sélection unique
 
   @override
@@ -97,12 +98,32 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
               SizedBox(height: 8),
               TextFormField(
                 decoration: InputDecoration(
-                  labelText: 'Date et lieu de naissance *',
+                  labelText: 'Date de naissance *',
                   border: OutlineInputBorder(),
                 ),
+                 validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Veuillez entrez la date de naissance';
+                  }
+                  return null;
+                },
                 onSaved: (value) => _birthDate = value!,
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 14),
+              TextFormField(
+                decoration: InputDecoration(
+                  labelText: 'Lieu de naissance *',
+                  border: OutlineInputBorder(),
+                ),
+                 validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Veuillez entrez le lieu de naissance';
+                  }
+                  return null;
+                },
+                onSaved: (value) => _birthDate = value!,
+              ),
+              SizedBox(height: 14),
               Text(
                 'Formations',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -158,6 +179,7 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
                     print('Email: $_email');
                     print('Téléphone: $_phone');
                     print('Date de naissance: $_birthDate');
+                     print('Lieu de naissance: $_Lieufrom');
                     print('Formation sélectionnée: $_selectedFormation');
                     // Vous pouvez également ajouter ici la logique pour ajouter le participant
                   }
