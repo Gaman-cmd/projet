@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'add_formation_page.dart';
+import 'formation_detail_page.dart'; // Importez votre page de détail
 import 'models/formation_model.dart';
 import 'services/formation_service.dart';
 
@@ -39,53 +40,64 @@ class _FormationsPageState extends State<FormationsPage> {
   Widget _buildFormationCard(Formation formation) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            SizedBox(height: 12),
-            Text(
-              formation.titre,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: InkWell(
+        onTap: () {
+          // Navigation vers la page de détail
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FormationDetailPage(formation: formation),
             ),
-            SizedBox(height: 8),
-            Text(
-              formation.description,
-              style: TextStyle(color: Colors.grey[600]),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Date: ${_formatDate(formation.dateDebut)}',
-                      style: TextStyle(color: Colors.grey[800]),
-                    ),
-                    Text(
-                      'Lieu: ${formation.lieu}',
-                      style: TextStyle(color: Colors.grey[800]),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Places: ${formation.placesReservees}/${formation.placesTotal}',
-                      style: TextStyle(color: Colors.grey[800]),
-                    ),
-                    _buildStatusChip(formation.statut),
-                  ],
-                ),
-              ],
-            ),
-          ],
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              SizedBox(height: 12),
+              Text(
+                formation.titre,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                formation.description,
+                style: TextStyle(color: Colors.grey[600]),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Date: ${_formatDate(formation.dateDebut)}',
+                        style: TextStyle(color: Colors.grey[800]),
+                      ),
+                      Text(
+                        'Lieu: ${formation.lieu}',
+                        style: TextStyle(color: Colors.grey[800]),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Places: ${formation.placesReservees}/${formation.placesTotal}',
+                        style: TextStyle(color: Colors.grey[800]),
+                      ),
+                      _buildStatusChip(formation.statut),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

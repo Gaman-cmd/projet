@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'services/formation_service.dart';
 
 class AddFormationPage extends StatefulWidget {
@@ -18,9 +21,40 @@ class _AddFormationPageState extends State<AddFormationPage> {
 
   final FormationService _formationService = FormationService();
 
+  File? _imageFile;
+  String? _imagePath; // Nouvelle variable pour stocker le chemin/URL de l'image
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+          _imagePath = pickedFile.path; // Stocke le chemin/URL
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la sélection de l\'image: $e')),
+      );
+    }
+  }
+
   Future<void> _submitFormation() async {
     if (_formKey.currentState!.validate()) {
       try {
+        String? imageUrl;
+        if (_imageFile != null) {
+          imageUrl = await _formationService.uploadImage(_imageFile!);
+        }
+
         await _formationService.addFormation({
           'titre': _titreController.text,
           'description': _descriptionController.text,
@@ -29,9 +63,10 @@ class _AddFormationPageState extends State<AddFormationPage> {
           'lieu': _lieuController.text,
           'places_total': int.parse(_placesTotalController.text),
           'contact_email': _contactEmailController.text,
+          'image_url': imageUrl,
           'statut': 'a_venir',
         });
-        Navigator.pop(context); // Retour à la page précédente après ajout
+        Navigator.pop(context);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -171,6 +206,8 @@ class _AddFormationPageState extends State<AddFormationPage> {
                       ),
                       SizedBox(height: 24),
                       _buildDateSelector(context),
+                      SizedBox(height: 16),
+                      _buildImageSelector(),
                       SizedBox(height: 32),
                       ElevatedButton(
                         onPressed: _submitFormation,
@@ -298,6 +335,78 @@ class _AddFormationPageState extends State<AddFormationPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildImageSelector() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Image de la formation',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade700,
+              ),
+            ),
+            SizedBox(height: 16),
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child:
+                      _imagePath != null
+                          ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            // Utilisation conditionnelle pour mobile/web
+                            child:
+                                kIsWeb
+                                    ? Image.network(
+                                      _imagePath!,
+                                      fit: BoxFit.cover,
+                                    )
+                                    : Image.file(
+                                      File(_imagePath!),
+                                      fit: BoxFit.cover,
+                                    ),
+                          )
+                          : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate,
+                                size: 50,
+                                color: Colors.blue.shade700,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Cliquez pour ajouter une image',
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

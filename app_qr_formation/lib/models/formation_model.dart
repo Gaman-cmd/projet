@@ -1,4 +1,5 @@
 class Formation {
+  final int id; // Assurez-vous que c'est un int
   final String titre;
   final String description;
   final DateTime dateDebut;
@@ -11,6 +12,7 @@ class Formation {
   final String statut;
 
   Formation({
+    required this.id,
     required this.titre,
     required this.description,
     required this.dateDebut,
@@ -25,6 +27,7 @@ class Formation {
 
   factory Formation.fromJson(Map<String, dynamic> json) {
     return Formation(
+      id: json['id'], // Assurez-vous que c'est un int dans l'API
       titre: json['titre'] ?? '',
       description: json['description'] ?? '',
       dateDebut: DateTime.parse(json['date_debut']),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'services/participant_service.dart';
 
 class AddParticipantPage extends StatefulWidget {
   @override
@@ -7,6 +8,9 @@ class AddParticipantPage extends StatefulWidget {
 
 class _AddParticipantPageState extends State<AddParticipantPage> {
   final _formKey = GlobalKey<FormState>();
+  final _participantService = ParticipantService();
+  bool _isLoading = false;
+
   String _firstName = '';
   String _lastName = '';
   String _email = '';
@@ -14,6 +18,35 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
   String _birthDate = '';
   String _Lieufrom = '';
   String? _selectedFormation; // Pour gérer la sélection unique
+
+  Future<void> _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      setState(() => _isLoading = true);
+
+      try {
+        final participant = await _participantService.createParticipant(
+          nom: _lastName,
+          prenom: _firstName,
+          email: _email,
+          telephone: _phone,
+          dateNaissance: _birthDate,
+          lieuNaissance: _Lieufrom,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Participant ajouté avec succès')),
+        );
+        Navigator.pop(context, true);
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString()}')));
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +134,7 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
                   labelText: 'Date de naissance *',
                   border: OutlineInputBorder(),
                 ),
-                 validator: (value) {
+                validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Veuillez entrez la date de naissance';
                   }
@@ -115,13 +148,13 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
                   labelText: 'Lieu de naissance *',
                   border: OutlineInputBorder(),
                 ),
-                 validator: (value) {
+                validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Veuillez entrez le lieu de naissance';
                   }
                   return null;
                 },
-                onSaved: (value) => _birthDate = value!,
+                onSaved: (value) => _Lieufrom = value!,
               ),
               SizedBox(height: 14),
               Text(
@@ -170,25 +203,15 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
               ),
               SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    _formKey.currentState!.save();
-                    // Ici, vous pouvez traiter les données du formulaire
-                    print('Prénom: $_firstName');
-                    print('Nom: $_lastName');
-                    print('Email: $_email');
-                    print('Téléphone: $_phone');
-                    print('Date de naissance: $_birthDate');
-                     print('Lieu de naissance: $_Lieufrom');
-                    print('Formation sélectionnée: $_selectedFormation');
-                    // Vous pouvez également ajouter ici la logique pour ajouter le participant
-                  }
-                },
+                onPressed: _isLoading ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue, // Couleur du bouton
                   foregroundColor: Colors.white, // Couleur du texte du bouton
                 ),
-                child: Text('Ajouter'),
+                child:
+                    _isLoading
+                        ? CircularProgressIndicator(color: Colors.white)
+                        : Text('Ajouter'),
               ),
             ],
           ),

@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application nécessite l'accès à la galerie pour sélectionner une image de formation.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application nécessite l'accès à l'appareil photo pour prendre une photo de formation.</string>
 </dict>
 </plist>

@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import Formation, Seance, Inscription
+from .models import Formation, Seance, Inscription, Participant
+
+class ParticipantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Participant
+        fields = [
+            'id', 'nom', 'prenom', 'email', 'telephone',
+            'date_naissance', 'lieu_naissance', 'qr_code',
+            'date_generation_qr', 'actif', 'date_creation'
+        ]
+        read_only_fields = ['qr_code', 'date_generation_qr', 'date_creation']
 
 class SeanceSerializer(serializers.ModelSerializer):
     class Meta:

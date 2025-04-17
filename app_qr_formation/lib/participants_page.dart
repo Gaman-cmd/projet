@@ -1,16 +1,67 @@
 import 'package:flutter/material.dart';
 import 'ajout_participant.dart'; // Assurez-vous que le chemin est correct
 import 'code_barre.dart'; // Importer la page code_barre
+import 'services/participant_service.dart';
+import 'models/participant_model.dart';
 
-class ParticipantsPage extends StatelessWidget {
-  const ParticipantsPage({Key? key}) : super(key: key);
+class ParticipantsPage extends StatefulWidget {
+  @override
+  _ParticipantsPageState createState() => _ParticipantsPageState();
+}
+
+class _ParticipantsPageState extends State<ParticipantsPage> {
+  final ParticipantService _participantService = ParticipantService();
+  List<Participant> _participants = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadParticipants();
+  }
+
+  Future<void> _loadParticipants() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final participants = await _participantService.getAllParticipants();
+      setState(() {
+        _participants = participants;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage =
+            'Impossible de charger les participants: ${e.toString()}';
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_errorMessage!),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'Réessayer',
+            textColor: Colors.white,
+            onPressed: _loadParticipants,
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
-        title: const Text('Participants', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Participants',
+          style: TextStyle(color: Colors.white),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white),
           onPressed: () {
@@ -18,82 +69,93 @@ class ParticipantsPage extends StatelessWidget {
           },
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: 'Recherche un participant....',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 60,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadParticipants,
+                      child: const Text('Réessayer'),
+                    ),
+                  ],
                 ),
+              )
+              : Column(
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: 'Recherche un participant....',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      children: <Widget>[
+                        ElevatedButton(
+                          onPressed: () {
+                            // Action pour afficher tous les participants
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: const Text('Tous'),
+                        ),
+                        const SizedBox(width: 8.0),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Action pour afficher les participants récents
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: const Text('Récents'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: _participants.length,
+                      itemBuilder: (context, index) {
+                        final participant = _participants[index];
+                        return _buildParticipantItem(context, participant);
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: <Widget>[
-                ElevatedButton(
-                  onPressed: () {
-                    // Action pour afficher tous les participants
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  child: const Text('Tous'),
-                ),
-                const SizedBox(width: 8.0),
-                ElevatedButton(
-                  onPressed: () {
-                    // Action pour afficher les participants récents
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  child: const Text('Récents'),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: <Widget>[
-                _buildParticipantItem(
-                  context,
-                  initials: 'AB',
-                  name: 'Ali Moussa',
-                  email: 'alimoussa.@exemp.com',
-                  phoneNumber: '+22798765432',
-                  dateOfBirth: '15/03/1990',
-                  lieuNaissance: 'A Tahoua',
-                ),
-                _buildParticipantItem(
-                  context,
-                  initials: 'CE',
-                  name: 'Chaibou Elh Issa',
-                  email: 'chaibouissa101@gmail.com',
-                  phoneNumber: '+22788576328',
-                  dateOfBirth: '20/02/2000',
-                  lieuNaissance:'A Niamey'
-                ),
-                // Ajoutez d'autres participants ici
-              ],
-            ),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -108,27 +170,20 @@ class ParticipantsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildParticipantItem(
-    BuildContext context, {
-    required String initials,
-    required String name,
-    required String email,
-    required String phoneNumber,
-    required String dateOfBirth,
-    required String lieuNaissance,
-  }) {
+  Widget _buildParticipantItem(BuildContext context, Participant participant) {
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CodeBarrePage(
-              name: name,
-              email: email,
-              phoneNumber: phoneNumber,
-              dateOfBirth: dateOfBirth,
-              lieuNaissance: lieuNaissance,
-            ),
+            builder:
+                (context) => CodeBarrePage(
+                  name: '${participant.prenom} ${participant.nom}',
+                  email: participant.email,
+                  phoneNumber: participant.telephone,
+                  dateOfBirth: participant.dateNaissance,
+                  lieuNaissance: participant.lieuNaissance,
+                ),
           ),
         );
       },
@@ -142,7 +197,7 @@ class ParticipantsPage extends StatelessWidget {
                 backgroundColor: Colors.blue[100],
                 radius: 25,
                 child: Text(
-                  initials,
+                  '${participant.prenom[0]}${participant.nom[0]}',
                   style: TextStyle(fontSize: 18, color: Colors.blue[800]),
                 ),
               ),
@@ -152,10 +207,16 @@ class ParticipantsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      name,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      '${participant.prenom} ${participant.nom}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    Text(email, style: TextStyle(color: Colors.grey[600])),
+                    Text(
+                      participant.email,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
                   ],
                 ),
               ),

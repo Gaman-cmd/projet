@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/formation_model.dart';
 
@@ -33,6 +34,46 @@ class FormationService {
       throw Exception(
         'Erreur lors de l\'ajout de la formation : ${response.body}',
       );
+    }
+  }
+
+  Future<String> uploadImage(File imageFile) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/upload-image/');
+      var request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.bytesToString();
+        // Supposons que le serveur renvoie l'URL de l'image dans la réponse
+        return responseData;
+      } else {
+        throw Exception('Échec du téléchargement de l\'image');
+      }
+    } catch (e) {
+      throw Exception('Erreur lors du téléchargement de l\'image: $e');
+    }
+  }
+
+  Future<Formation> getFormationDetails(int formationId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/formations/$formationId/'),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return Formation.fromJson(jsonData);
+      } else {
+        throw Exception(
+          'Erreur lors du chargement des détails de la formation : ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Erreur de connexion : $e');
     }
   }
 }

@@ -24,10 +24,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  qr_flutter: ^4.0.0
+
   pdf: ^3.10.4 # Ou la dernière version disponible
   printing: ^5.11.1 # Ou la dernière version disponible
   share_plus: ^7.2.1 # Ou la dernière version disponible
+  firebase_core: ^2.18.0
+  firebase_storage: ^11.6.0
+  firebase_storage_web: ^3.6.23
+  js: ^0.6.7
+  http: ^1.2.0
+  shared_preferences: ^2.0.7
+  intl: ^0.17.0
+  image_picker: ^0.8.7+4
+  qr_flutter: ^4.0.0
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   dio: ^5.8.0+1
   provider: ^6.1.4
@@ -44,8 +56,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - assets/images/formation.jpg
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -74,4 +86,3 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-  
