@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'services/participant_service.dart';
+import 'services/formation_service.dart';
+import 'models/formation_model.dart';
+import 'code_barre.dart';
 
 class AddParticipantPage extends StatefulWidget {
   @override
@@ -9,6 +12,7 @@ class AddParticipantPage extends StatefulWidget {
 class _AddParticipantPageState extends State<AddParticipantPage> {
   final _formKey = GlobalKey<FormState>();
   final _participantService = ParticipantService();
+  final _formationService = FormationService();
   bool _isLoading = false;
 
   String _firstName = '';
@@ -17,7 +21,92 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
   String _phone = '';
   String _birthDate = '';
   String _Lieufrom = '';
-  String? _selectedFormation; // Pour gérer la sélection unique
+  Formation? _selectedFormation;
+  List<Formation> _formations = [];
+  bool _isLoadingFormations = true;
+
+  DateTime? _selectedDate;
+  final TextEditingController _dateController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFormations();
+  }
+
+  Future<void> _loadFormations() async {
+    try {
+      final formations = await _formationService.getFormations();
+      setState(() {
+        _formations = formations;
+        _isLoadingFormations = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur de chargement des formations: ${e.toString()}'),
+        ),
+      );
+      setState(() => _isLoadingFormations = false);
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      locale: const Locale('fr', 'FR'), // Pour avoir le calendrier en français
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = "${picked.day}/${picked.month}/${picked.year}";
+        _birthDate =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
+    }
+  }
+
+  Widget _buildFormationDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Formation *',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        DropdownButtonFormField<Formation>(
+          value: _selectedFormation,
+          decoration: InputDecoration(
+            hintText: 'Sélectionner une formation',
+            border: OutlineInputBorder(),
+          ),
+          items:
+              _formations.map((Formation formation) {
+                return DropdownMenuItem<Formation>(
+                  value: formation,
+                  child: Text(formation.titre),
+                );
+              }).toList(),
+          validator: (value) {
+            if (value == null) {
+              return 'Veuillez sélectionner une formation';
+            }
+            return null;
+          },
+          onChanged: (Formation? newValue) {
+            setState(() {
+              _selectedFormation = newValue;
+            });
+          },
+        ),
+      ],
+    );
+  }
 
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
@@ -25,19 +114,34 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
       setState(() => _isLoading = true);
 
       try {
-        final participant = await _participantService.createParticipant(
+        await _participantService.createParticipant(
           nom: _lastName,
           prenom: _firstName,
           email: _email,
           telephone: _phone,
           dateNaissance: _birthDate,
           lieuNaissance: _Lieufrom,
+          formationId: _selectedFormation!.id,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Participant ajouté avec succès')),
+          const SnackBar(content: Text('Participant ajouté avec succès')),
         );
-        Navigator.pop(context, true);
+
+        // Navigue vers la page carte/QR code
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => CodeBarrePage(
+                  name: '$_firstName $_lastName',
+                  email: _email,
+                  phoneNumber: _phone,
+                  dateOfBirth: _birthDate,
+                  lieuNaissance: _Lieufrom,
+                ),
+          ),
+        );
       } catch (e) {
         ScaffoldMessenger.of(
           context,
@@ -48,12 +152,40 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
     }
   }
 
+  Widget _buildDateField() {
+    return TextFormField(
+      controller: _dateController,
+      decoration: InputDecoration(
+        labelText: 'Date de naissance *',
+        border: OutlineInputBorder(),
+        suffixIcon: IconButton(
+          icon: Icon(Icons.calendar_today),
+          onPressed: () => _selectDate(context),
+        ),
+      ),
+      readOnly: true,
+      onTap: () => _selectDate(context),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Veuillez sélectionner une date de naissance';
+        }
+        return null;
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Ajouter un participant'),
-        backgroundColor: Colors.blue, // Couleur de la barre d'appli
+        backgroundColor: Colors.blue,
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -129,19 +261,7 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
                 onSaved: (value) => _phone = value!,
               ),
               SizedBox(height: 8),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Date de naissance *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrez la date de naissance';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _birthDate = value!,
-              ),
+              _buildDateField(),
               SizedBox(height: 14),
               TextFormField(
                 decoration: InputDecoration(
@@ -157,56 +277,15 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
                 onSaved: (value) => _Lieufrom = value!,
               ),
               SizedBox(height: 14),
-              Text(
-                'Formations',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              RadioListTile<String>(
-                title: Text('Formation en Java'),
-                value: 'java',
-                groupValue: _selectedFormation,
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedFormation = value;
-                  });
-                },
-              ),
-              RadioListTile<String>(
-                title: Text('Formation en Python'),
-                value: 'python',
-                groupValue: _selectedFormation,
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedFormation = value;
-                  });
-                },
-              ),
-              RadioListTile<String>(
-                title: Text('Formation en HTML'),
-                value: 'HTML',
-                groupValue: _selectedFormation,
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedFormation = value;
-                  });
-                },
-              ),
-              RadioListTile<String>(
-                title: Text('Formation en Excel'),
-                value: 'Excel',
-                groupValue: _selectedFormation,
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedFormation = value;
-                  });
-                },
-              ),
+              _isLoadingFormations
+                  ? Center(child: CircularProgressIndicator())
+                  : _buildFormationDropdown(),
               SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Couleur du bouton
-                  foregroundColor: Colors.white, // Couleur du texte du bouton
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
                 ),
                 child:
                     _isLoading
@@ -219,4 +298,4 @@ class _AddParticipantPageState extends State<AddParticipantPage> {
       ),
     );
   }
-}
+} */

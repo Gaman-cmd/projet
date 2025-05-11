@@ -1,478 +1,1145 @@
+// ignore_for_file: use_super_parameters, library_private_types_in_public_api, deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+import 'ajout_participant.dart';
+import 'models/participant_model.dart';
+import 'models/session_model.dart';
+import 'services/formation_service.dart';
 import 'models/formation_model.dart';
+import 'presence_management_page.dart';
+import 'services/participant_service.dart';
+import 'select_participants_page.dart';
+import 'services/session_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart'; // Pour le formatage des dates
 
 class FormationDetailPage extends StatefulWidget {
-  final Formation formation;
+  final int formationId;
 
-  const FormationDetailPage({Key? key, required this.formation})
+  const FormationDetailPage({Key? key, required this.formationId})
     : super(key: key);
 
   @override
   _FormationDetailPageState createState() => _FormationDetailPageState();
 }
 
-class _FormationDetailPageState extends State<FormationDetailPage> {
-  // Index de l'onglet sélectionné (0: Information, 1: Participants, 2: Présences)
-  int _selectedTabIndex = 0;
+class _FormationDetailPageState extends State<FormationDetailPage>
+    with TickerProviderStateMixin {
+  late Future<Formation> _formationFuture;
+  final FormationService _formationService = FormationService();
+  final ParticipantService _participantService = ParticipantService();
+  late Future<List<Session>> _sessionsFuture;
+  late TabController _tabController;
+
+  List<Participant> _selectedParticipants = [];
+  String? _role;
+
+  // Couleurs basées sur le logo AUF
+  final Color primaryColor = const Color(0xFFA6092B); // Rouge AUF
+  final Color accentColor = const Color(0xFF2196F3); // Bleu du logo
+  final Color greenColor = const Color(0xFF8BC34A); // Vert du logo
+  final Color purpleColor = const Color(0xFF9C27B0); // Violet du logo
+  final Color yellowColor = const Color(0xFFFFC107); // Jaune du logo
+
+  @override
+  void initState() {
+    super.initState();
+    _formationFuture = _formationService.getFormationDetails(
+      widget.formationId,
+    );
+    _loadParticipants();
+    _sessionsFuture = SessionService().getSessionsByFormation(
+      widget.formationId,
+    );
+    _loadRole();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRole() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _role = prefs.getString('role');
+    });
+  }
+
+  void _loadParticipants() async {
+    final inscriptions = await _participantService.getInscriptionsByFormation(
+      widget.formationId,
+    );
+    final participantsAcceptes =
+        inscriptions
+            .where((i) => i['statut'] == 'accepte')
+            .map((i) => Participant.fromJson(i['participant']))
+            .toList();
+    setState(() {
+      _selectedParticipants = participantsAcceptes;
+    });
+  }
+
+  Future<void> _inscrireAFormation(int formationId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      int? participantId = prefs.getInt('participant_id');
+      if (participantId == null) {
+        _showSnackBar("Impossible de trouver l'utilisateur connecté");
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/api/inscription/'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "participant_id": participantId,
+          "formation_id": formationId,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        _showSnackBar(
+          "Demande d'inscription envoyée. Attendez la validation de l'admin.",
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        _showSnackBar(data['error'] ?? "Erreur lors de l'inscription");
+      }
+    } catch (e) {
+      _showSnackBar("Erreur lors de l'inscription: $e");
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: primaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: EdgeInsets.all(10),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_role == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Détails de la formation'),
+          backgroundColor: primaryColor,
+          elevation: 0,
+        ),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+          ),
+        ),
+      );
+    }
+
+    final isParticipant = _role == 'participant';
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           'Détails de la formation',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.normal),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: primaryColor,
+        elevation: 2,
         actions: [
-          IconButton(
-            icon: Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
+          if (!isParticipant)
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.white),
+              onPressed: () {
+                // Action pour modifier la formation
+              },
+            ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // En-tête image avec les informations de formation
-            Stack(
-              children: [
-                // Image d'arrière-plan
-                Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/images/formation.jpg'),
-                      fit: BoxFit.cover,
+      body: FutureBuilder<Formation>(
+        future: _formationFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              ),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: primaryColor, size: 60),
+                  SizedBox(height: 16),
+                  Text(
+                    'Erreur: ${snapshot.error}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _formationFuture = _formationService
+                            .getFormationDetails(widget.formationId);
+                      });
+                    },
+                    child: Text('Réessayer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
                     ),
                   ),
-                ),
-                // Superposition semi-transparente pour améliorer la lisibilité du texte
-                Container(
-                  width: double.infinity,
-                  height: 180,
-                  color: Colors.black.withOpacity(0.4),
-                ),
-                // Contenu textuel sur l'image
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Formation java',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '18 mars 2025',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                          SizedBox(width: 20),
-                          Icon(
-                            Icons.access_time,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '14:30 - 18:30',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'À venir',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Section des onglets d'information interactifs
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 1,
-                    blurRadius: 1,
-                  ),
                 ],
               ),
-              child: Row(
-                children: [
-                  _buildTabButton(0, 'Information'),
-                  _buildTabButton(1, 'Participants(25)'),
-                  _buildTabButton(2, 'Présences'),
-                ],
-              ),
-            ),
+            );
+          } else if (snapshot.hasData) {
+            final formation = snapshot.data!;
+            if (isParticipant) {
+              return _buildParticipantView(formation);
+            } else {
+              return _buildAdminView(formation);
+            }
+          } else {
+            return Center(child: Text('Aucune donnée disponible'));
+          }
+        },
+      ),
+    );
+  }
 
-            // Contenu qui change en fonction de l'onglet sélectionné
-            _buildSelectedTabContent(),
+  Widget _buildParticipantView(Formation formation) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFormationHeader(formation),
+          _buildInformationContent(formation),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminView(Formation formation) {
+    return Column(
+      children: [
+        _buildFormationHeader(formation),
+        TabBar(
+          controller: _tabController,
+          labelColor: primaryColor,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: primaryColor,
+          indicatorWeight: 3,
+          tabs: [
+            Tab(icon: Icon(Icons.info_outline), text: 'Information'),
+            Tab(
+              icon: Icon(Icons.people),
+              text: 'Participants (${_selectedParticipants.length})',
+            ),
+            Tab(icon: Icon(Icons.calendar_today), text: 'Séances'),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: Colors.blue,
-        child: Icon(Icons.camera_alt),
-        tooltip: 'Scanner',
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  // Construction de chaque bouton d'onglet
-  Widget _buildTabButton(int index, String title) {
-    bool isSelected = _selectedTabIndex == index;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedTabIndex = index;
-          });
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? Colors.blue : Colors.transparent,
-                width: 2,
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              SingleChildScrollView(child: _buildInformationContent(formation)),
+              SingleChildScrollView(
+                child: _buildParticipantsContent(formation),
               ),
-            ),
-          ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[700],
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
+              SingleChildScrollView(child: _buildPresencesContent()),
+            ],
           ),
         ),
-      ),
+      ],
     );
   }
 
-  // Construction du contenu en fonction de l'onglet sélectionné
-  Widget _buildSelectedTabContent() {
-    switch (_selectedTabIndex) {
-      case 0:
-        return _buildInformationContent();
-      case 1:
-        return _buildParticipantsContent();
-      case 2:
-        return _buildPresencesContent();
-      default:
-        return _buildInformationContent();
+  Widget _buildInformationContent(Formation formation) {
+    String formatDate(DateTime date) {
+      return DateFormat('dd/MM/yyyy').format(date);
     }
-  }
 
-  // Contenu de l'onglet Information
-  Widget _buildInformationContent() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Description',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          _buildSectionTitle('Description', Icons.description),
           SizedBox(height: 10),
           Container(
-            padding: EdgeInsets.all(12),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              'Cette formation avancée en Java s\'adresse aux développeurs qui souhaitent approfondir leurs connaissances et maîtriser les concepts avancés du langage',
-              style: TextStyle(fontSize: 15),
-            ),
+            child: Text(formation.description, style: TextStyle(height: 1.5)),
           ),
           SizedBox(height: 24),
-
-          // Section Détails
-          Text(
-            'Détails',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          _buildSectionTitle('Détails', Icons.details),
           SizedBox(height: 16),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailItem(
+                          Icons.calendar_today,
+                          'Date début',
+                          formatDate(formation.dateDebut),
+                          accentColor,
+                        ),
+                        SizedBox(height: 20),
+                        _buildDetailItem(
+                          Icons.location_on,
+                          'Lieu',
+                          formation.lieu,
+                          greenColor,
+                        ),
+                        SizedBox(height: 20),
+                        _buildDetailItem(
+                          Icons.person,
+                          'Formateur',
+                          'Non spécifié', // Remplacer si vous avez l'info
+                          purpleColor,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailItem(
+                          Icons.event_available,
+                          'Date fin',
+                          formatDate(formation.dateFin),
+                          accentColor,
+                        ),
+                        SizedBox(height: 20),
+                        _buildDetailItem(
+                          Icons.people,
+                          'Places',
+                          '${_selectedParticipants.length}/${formation.placesTotal}',
+                          yellowColor,
+                        ),
+                        SizedBox(height: 20),
+                        _buildDetailItem(
+                          Icons.email,
+                          'Contact',
+                          formation.contactEmail,
+                          purpleColor,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 30),
+          if (_role == 'participant')
+            Center(
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.how_to_reg),
+                label: Text("S'inscrire à cette formation"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  textStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onPressed: () => _inscrireAFormation(formation.id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-          // Table des détails
-          Row(
+  Widget _buildDetailItem(
+    IconData icon,
+    String title,
+    String value,
+    Color color,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Colonne gauche
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('14 mars 2025'),
-                    SizedBox(height: 20),
-                    Text('Lieu', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('Salle de conférence A'),
-                    SizedBox(height: 20),
-                    Text(
-                      'Formateur',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text('Thomas Dubois'),
-                  ],
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
                 ),
               ),
-              // Colonne droite
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Horaires',
+              SizedBox(height: 4),
+              Text(value, style: TextStyle(fontSize: 15)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: primaryColor, size: 20),
+        SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildParticipantsContent(Formation formation) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Liste des participants', Icons.people),
+          SizedBox(height: 16),
+          if (_selectedParticipants.isEmpty)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.person_off, size: 60, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Aucun participant inscrit',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: _selectedParticipants.length,
+              itemBuilder: (context, index) {
+                final participant = _selectedParticipants[index];
+                return Card(
+                  margin: EdgeInsets.only(bottom: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 1,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: primaryColor,
+                      child: Text(
+                        participant.nom[0].toUpperCase(),
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(
+                      '${participant.prenom} ${participant.nom}',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Text('14:30 - 18:30'),
-                    SizedBox(height: 20),
-                    Text(
-                      'Places',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text('25 / 30'),
-                    SizedBox(height: 20),
-                    Text(
-                      'Contact',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text('formation@example.com'),
-                  ],
+                    subtitle: Text(participant.email),
+                    trailing:
+                        _role == 'admin'
+                            ? IconButton(
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: Colors.red,
+                              ),
+                              onPressed: () {
+                                // Logique pour supprimer un participant
+                              },
+                            )
+                            : null,
+                  ),
+                );
+              },
+            ),
+          SizedBox(height: 20),
+          if (_role != 'formateur')
+            ElevatedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => SelectParticipantsPage(
+                          formationId: formation.id,
+                          formation: formation,
+                        ),
+                  ),
+                );
+                if (result != null && result is List<Participant>) {
+                  for (final participant in result) {
+                    await _participantService.addParticipantToFormation(
+                      participantId: participant.id,
+                      formationId: widget.formationId,
+                    );
+                  }
+                  _loadParticipants();
+                }
+              },
+              icon: Icon(Icons.person_add),
+              label: Text('Ajouter des participants'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                minimumSize: Size(double.infinity, 50),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPresencesContent() {
+    return FutureBuilder<List<Session>>(
+      future: _sessionsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: primaryColor, size: 60),
+                SizedBox(height: 16),
+                Text('Erreur lors du chargement des séances'),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _sessionsFuture = SessionService().getSessionsByFormation(
+                        widget.formationId,
+                      );
+                    });
+                  },
+                  child: Text('Réessayer'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final seances = snapshot.data ?? [];
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Liste des séances', Icons.event_note),
+              SizedBox(height: 16),
+              if (seances.isEmpty)
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.event_busy, size: 60, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'Aucune séance planifiée',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: seances.length,
+                  itemBuilder: (context, index) {
+                    final seance = seances[index];
+                    final seanceTitle =
+                        seance.titre.isNotEmpty
+                            ? seance.titre
+                            : 'Séance ${index + 1}';
+
+                    // Format pour les dates et heures
+                    final dateDebut = DateFormat(
+                      'dd/MM/yyyy',
+                    ).format(seance.dateDebut);
+                    final heureDebut = DateFormat(
+                      'HH:mm',
+                    ).format(seance.dateDebut);
+                    final heureFin = DateFormat('HH:mm').format(seance.dateFin);
+
+                    // Détermine la couleur selon le statut (passé/futur/aujourd'hui)
+                    Color statusColor;
+                    if (seance.dateDebut.isBefore(
+                      DateTime.now().subtract(Duration(days: 1)),
+                    )) {
+                      statusColor = Colors.grey; // Passé
+                    } else if (seance.dateDebut.day == DateTime.now().day) {
+                      statusColor = greenColor; // Aujourd'hui
+                    } else {
+                      statusColor = accentColor; // Futur
+                    }
+
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: statusColor.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      elevation: 2,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => PresenceManagementPage(
+                                    seanceId: seance.id,
+                                    seanceTitle: seanceTitle,
+                                    seanceDetails:
+                                        '$dateDebut • $heureDebut - $heureFin',
+                                  ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.event_note,
+                                  color: statusColor,
+                                  size: 28,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      seanceTitle,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          dateDebut,
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Icon(
+                                          Icons.access_time,
+                                          size: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          '$heureDebut - $heureFin',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right, color: statusColor),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => _showAddSessionDialog(),
+                icon: Icon(Icons.add),
+                label: Text('Ajouter une séance'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  minimumSize: Size(double.infinity, 50),
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // Contenu de l'onglet Participants
-  Widget _buildParticipantsContent() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Liste des participants',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 16),
+  Future<void> _showAddSessionDialog() async {
+    final titreController = TextEditingController();
+    DateTime? dateDebut;
+    TimeOfDay? heureDebut;
+    TimeOfDay? heureFin;
 
-          // Liste des participants
-          ListView.separated(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: 5, // Exemple avec 5 participants
-            separatorBuilder: (context, index) => Divider(),
-            itemBuilder: (context, index) {
-              // Exemple de participants
-              return _buildParticipantCard(
-                'Participant ${index + 1}',
-                'participant${index + 1}@example.com',
-              );
-            },
-          ),
-
-          SizedBox(height: 20),
-          // Bouton pour ajouter un participant
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: Icon(Icons.add),
-            label: Text('Ajouter un participant'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              minimumSize: Size(double.infinity, 45),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Contenu de l'onglet Présences
-  Widget _buildPresencesContent() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Gestion des présences',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 10),
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber, width: 1),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.amber),
-                SizedBox(width: 10),
-                Expanded(
+    final result = await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.add_circle, color: primaryColor),
+                  SizedBox(width: 8),
+                  Text('Ajouter une séance'),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: titreController,
+                      decoration: InputDecoration(
+                        labelText: 'Titre de la séance',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        prefixIcon: Icon(Icons.title),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Date de la séance:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: primaryColor,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            dateDebut = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today),
+                            SizedBox(width: 10),
+                            Text(
+                              dateDebut != null
+                                  ? DateFormat('dd/MM/yyyy').format(dateDebut!)
+                                  : 'Sélectionner une date',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Heure de début:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 8),
+                              InkWell(
+                                onTap: () async {
+                                  final picked = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: ColorScheme.light(
+                                            primary: primaryColor,
+                                          ),
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      heureDebut = picked;
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.access_time),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        heureDebut != null
+                                            ? '${heureDebut!.hour.toString().padLeft(2, '0')}:${heureDebut!.minute.toString().padLeft(2, '0')}'
+                                            : 'Début',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Heure de fin:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 8),
+                              InkWell(
+                                onTap: () async {
+                                  final picked = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: ColorScheme.light(
+                                            primary: primaryColor,
+                                          ),
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      heureFin = picked;
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.access_time),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        heureFin != null
+                                            ? '${heureFin!.hour.toString().padLeft(2, '0')}:${heureFin!.minute.toString().padLeft(2, '0')}'
+                                            : 'Fin',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'La formation n\'a pas encore eu lieu. Les présences pourront être enregistrées le jour de la formation.',
-                    style: TextStyle(fontSize: 15),
+                    'Annuler',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (titreController.text.isEmpty ||
+                        dateDebut == null ||
+                        heureDebut == null ||
+                        heureFin == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Veuillez remplir tous les champs'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Combine date et heure
+                    final dateTimeDebut = DateTime(
+                      dateDebut!.year,
+                      dateDebut!.month,
+                      dateDebut!.day,
+                      heureDebut!.hour,
+                      heureDebut!.minute,
+                    );
+
+                    final dateTimeFin = DateTime(
+                      dateDebut!.year,
+                      dateDebut!.month,
+                      dateDebut!.day,
+                      heureFin!.hour,
+                      heureFin!.minute,
+                    );
+
+                    Navigator.pop(context, {
+                      'titre': titreController.text,
+                      'dateDebut': dateTimeDebut,
+                      'dateFin': dateTimeFin,
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text('Ajouter'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      try {
+        await SessionService().addSession(
+          formationId: widget.formationId,
+          titre: result['titre'],
+          dateDebut: result['dateDebut'],
+          dateFin: result['dateFin'],
+        );
+
+        setState(() {
+          _sessionsFuture = SessionService().getSessionsByFormation(
+            widget.formationId,
+          );
+        });
+
+        _showSnackBar('Séance ajoutée avec succès');
+      } catch (e) {
+        _showSnackBar('Erreur lors de l\'ajout de la séance');
+      }
+    }
+  }
+
+  Widget _buildFormationHeader(Formation formation) {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/formation.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formation.titre,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, color: Colors.white70, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      DateFormat('dd/MM/yyyy').format(formation.dateDebut) +
+                          ' - ' +
+                          DateFormat('dd/MM/yyyy').format(formation.dateFin),
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(formation.statutAuto),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _getStatusText(formation.statutAuto),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 24),
-
-          // Statistiques de présence
-          Text(
-            'Statistiques',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 16),
-
-          // Cartes de statistiques
-          Row(
-            children: [
-              Expanded(child: _buildStatCard('Inscrits', '25', Colors.blue)),
-              SizedBox(width: 10),
-              Expanded(child: _buildStatCard('Présents', '0', Colors.green)),
-              SizedBox(width: 10),
-              Expanded(child: _buildStatCard('Absents', '0', Colors.red)),
-            ],
-          ),
-
-          SizedBox(height: 24),
-          // Bouton pour scanner les présences
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: Icon(Icons.qr_code_scanner),
-            label: Text('Scanner les présences'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              minimumSize: Size(double.infinity, 45),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // Card pour afficher les statistiques
-  Widget _buildStatCard(String title, String value, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          SizedBox(height: 5),
-          Text(title, style: TextStyle(color: Colors.grey[700], fontSize: 14)),
-        ],
-      ),
-    );
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'a_venir':
+        return yellowColor;
+      case 'en_cours':
+        return greenColor;
+      case 'terminee':
+        return Colors.grey;
+      default:
+        return accentColor;
+    }
   }
 
-  Widget _buildParticipantCard(String name, String email) {
-    // Obtenir les initiales à partir du nom
-    String initials =
-        name.isNotEmpty
-            ? name
-                .split(' ')
-                .map((word) => word.isNotEmpty ? word[0] : '')
-                .join('')
-            : '??';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.blue[100],
-            child: Text(
-              initials,
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
-            ),
-          ),
-          SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(email, style: TextStyle(color: Colors.grey[600])),
-              ],
-            ),
-          ),
-          // Options pour chaque participant
-          IconButton(icon: Icon(Icons.more_vert), onPressed: () {}),
-        ],
-      ),
-    );
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'a_venir':
+        return 'À venir';
+      case 'en_cours':
+        return 'En cours';
+      case 'terminee':
+        return 'Terminée';
+      default:
+        return status;
+    }
   }
 }

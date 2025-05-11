@@ -30,7 +30,7 @@ SECRET_KEY = config('SECRET_KEY')
 #DEBUG = True
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-#AUTH_USER_MODEL = 'api.Utilisateur' 
+AUTH_USER_MODEL = 'api.User' 
 
   
 

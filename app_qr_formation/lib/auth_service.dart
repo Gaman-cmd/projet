@@ -1,4 +1,4 @@
-/*import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,20 +13,12 @@ class AuthService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({'email': email, 'password': password}),
     );
-
     if (response.statusCode == 200) {
-      // Si la requête est un succès, on récupère le token
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final token = data['access'];
-
-      // Sauvegarder le token localement
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.setString('token', token);
-
-      return {'status': true, 'token': token};
+      final data = jsonDecode(response.body);
+      return {'status': true, 'user': data['user']};
     } else {
-      // Si l'authentification échoue, retourner une erreur
-      return {'status': false, 'message': 'Identifiants invalides'};
+      final data = jsonDecode(response.body);
+      return {'status': false, 'message': data['error'] ?? 'Erreur'};
     }
   }
 
@@ -47,5 +39,34 @@ class AuthService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.remove('token');
   }
+
+  // Fonction d'inscription pour créer un nouvel utilisateur
+  Future<Map<String, dynamic>> register(
+    String email,
+    String password,
+    String nom,
+    String prenom,
+    String telephone,
+    String dateNaissance,
+    String lieuNaissance,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/register/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'nom': nom,
+        'prenom': prenom,
+        'telephone': telephone,
+        'date_naissance': dateNaissance,
+        'lieu_naissance': lieuNaissance,
+      }),
+    );
+    if (response.statusCode == 201) {
+      return {'status': true};
+    } else {
+      return {'status': false, 'message': 'Erreur lors de l\'inscription'};
+    }
+  }
 }
- */

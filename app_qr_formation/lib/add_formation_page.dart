@@ -5,6 +5,8 @@ import 'dart:io';
 import 'services/formation_service.dart';
 
 class AddFormationPage extends StatefulWidget {
+  const AddFormationPage({super.key});
+
   @override
   _AddFormationPageState createState() => _AddFormationPageState();
 }
@@ -299,10 +301,10 @@ class _AddFormationPageState extends State<AddFormationPage> {
                     ),
                     TextButton(
                       onPressed: () => _selectDate(context, true),
-                      child: Text('Sélectionner'),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.blue.shade700,
                       ),
+                      child: Text('Sélectionner'),
                     ),
                   ],
                 ),
@@ -323,10 +325,10 @@ class _AddFormationPageState extends State<AddFormationPage> {
                     ),
                     TextButton(
                       onPressed: () => _selectDate(context, false),
-                      child: Text('Sélectionner'),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.blue.shade700,
                       ),
+                      child: Text('Sélectionner'),
                     ),
                   ],
                 ),

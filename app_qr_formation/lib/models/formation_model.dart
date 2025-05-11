@@ -41,3 +41,16 @@ class Formation {
     );
   }
 }
+
+extension FormationStatus on Formation {
+  String get statutAuto {
+    final now = DateTime.now();
+    if (now.isBefore(dateDebut)) {
+      return 'a_venir';
+    } else if (now.isAfter(dateFin)) {
+      return 'terminee';
+    } else {
+      return 'en_cours';
+    }
+  }
+}

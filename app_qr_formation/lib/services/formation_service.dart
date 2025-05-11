@@ -76,4 +76,33 @@ class FormationService {
       throw Exception('Erreur de connexion : $e');
     }
   }
+
+  Future<List> getFormationsByParticipant(int participantId) async {
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/api/formations/par_participant/?participant_id=$participantId',
+      ),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Erreur lors de la récupération des formations');
+    }
+  }
+
+  Future<List<Formation>> getFormationsByFormateur(int formateurId) async {
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/api/formations/par_formateur/?formateur_id=$formateurId',
+      ),
+    );
+    if (response.statusCode == 200) {
+      List<dynamic> jsonData = json.decode(response.body);
+      return jsonData.map((data) => Formation.fromJson(data)).toList();
+    } else {
+      throw Exception(
+        'Erreur lors de la récupération des formations du formateur',
+      );
+    }
+  }
 }
