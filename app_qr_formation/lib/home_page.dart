@@ -551,7 +551,7 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
               Icon(Icons.people, size: 16, color: AUFTheme.textSecondary),
               SizedBox(width: 4),
               Text(
-                '${formation.placesReservees} participants',
+                '${formation.nombreParticipantsAcceptes}/${formation.placesTotal} participants',
                 style: TextStyle(color: AUFTheme.textSecondary, fontSize: 13),
               ),
             ],

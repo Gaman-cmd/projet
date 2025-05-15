@@ -10,6 +10,8 @@ class Formation {
   final String contactEmail;
   final String imageUrl;
   final String statut;
+  final Map<String, dynamic>? formateur; // Ajoute cet attribut
+  final int nombreParticipantsAcceptes;
 
   Formation({
     required this.id,
@@ -23,6 +25,8 @@ class Formation {
     required this.contactEmail,
     this.imageUrl = '',
     required this.statut,
+    this.formateur, // Ajoute ce paramètre
+    required this.nombreParticipantsAcceptes,
   });
 
   factory Formation.fromJson(Map<String, dynamic> json) {
@@ -34,10 +38,13 @@ class Formation {
       dateFin: DateTime.parse(json['date_fin']),
       lieu: json['lieu'] ?? '',
       placesTotal: json['places_total'] ?? 0,
-      placesReservees: json['places_reservees'] ?? 0,
+      placesReservees:
+          json['participants_acceptes'] ?? 0, // Modifie cette ligne
       contactEmail: json['contact_email'] ?? '',
       imageUrl: json['image_url'] ?? '',
       statut: json['statut'] ?? 'a_venir',
+      formateur: json['formateur'], // Ajoute cette ligne
+      nombreParticipantsAcceptes: json['nombre_participants_acceptes'] ?? 0,
     );
   }
 }

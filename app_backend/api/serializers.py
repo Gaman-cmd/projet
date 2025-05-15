@@ -64,6 +64,7 @@ class FormationSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    nombre_participants_acceptes = serializers.SerializerMethodField()
 
     class Meta:
         model = Formation
@@ -71,11 +72,15 @@ class FormationSerializer(serializers.ModelSerializer):
             'id', 'titre', 'description', 'date_debut', 'date_fin',
             'lieu', 'places_total', 'places_reservees', 'contact_email',
             'image_url', 'statut', 'date_creation', 'seances',
-            'participants_inscrits', 'formateur', 'formateur_id'
+            'participants_inscrits', 'formateur', 'formateur_id',
+            'nombre_participants_acceptes'
         ]
 
     def get_participants_inscrits(self, obj):
         return Inscription.objects.filter(formation=obj, statut='accepte').count()
+
+    def get_nombre_participants_acceptes(self, obj):
+        return obj.inscriptions.filter(statut='accepte').count()
 
 class InscriptionSerializer(serializers.ModelSerializer):
     participant = UserSerializer(read_only=True)

@@ -66,10 +66,11 @@ class FormationService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
+        // Le backend doit inclure les infos du formateur dans la réponse
         return Formation.fromJson(jsonData);
       } else {
         throw Exception(
-          'Erreur lors du chargement des détails de la formation : ${response.statusCode}',
+          'Erreur lors du chargement des détails de la formation',
         );
       }
     } catch (e) {

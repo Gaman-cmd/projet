@@ -12,6 +12,12 @@ class AddFormationPage extends StatefulWidget {
 }
 
 class _AddFormationPageState extends State<AddFormationPage> {
+  final Color primaryColor = const Color(0xFFA6092B); // Rouge AUF
+  final Color accentColor = const Color(0xFF2196F3); // Bleu
+  final Color greenColor = const Color(0xFF8BC34A); // Vert
+  final Color purpleColor = const Color(0xFF9C27B0); // Violet
+  final Color yellowColor = const Color(0xFFFFC107); // Jaune
+
   final _formKey = GlobalKey<FormState>();
   final _titreController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -103,17 +109,17 @@ class _AddFormationPageState extends State<AddFormationPage> {
       appBar: AppBar(
         title: Text(
           'Nouvelle Formation',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         elevation: 0,
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor: primaryColor,
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade700, Colors.blue.shade50],
+            colors: [primaryColor, Colors.white],
             stops: [0.0, 0.2],
           ),
         ),
@@ -137,7 +143,7 @@ class _AddFormationPageState extends State<AddFormationPage> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
+                          color: primaryColor,
                         ),
                       ),
                       SizedBox(height: 20),
@@ -251,21 +257,21 @@ class _AddFormationPageState extends State<AddFormationPage> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.blue.shade700),
+        prefixIcon: Icon(icon, color: primaryColor),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.blue.shade200),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.blue.shade200),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+          borderSide: BorderSide(color: primaryColor, width: 2),
         ),
         filled: true,
-        fillColor: Colors.blue.shade50,
+        fillColor: primaryColor.withOpacity(0.05),
       ),
       maxLines: maxLines,
       keyboardType: keyboardType,
@@ -274,67 +280,61 @@ class _AddFormationPageState extends State<AddFormationPage> {
   }
 
   Widget _buildDateSelector(BuildContext context) {
-    return Column(
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: primaryColor.withOpacity(0.2)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            _buildDateRow(
+              isStartDate: true,
+              date: _dateDebut,
+              onTap: () => _selectDate(context, true),
+            ),
+            Divider(color: primaryColor.withOpacity(0.2)),
+            _buildDateRow(
+              isStartDate: false,
+              date: _dateFin,
+              onTap: () => _selectDate(context, false),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateRow({
+    required bool isStartDate,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
+    return Row(
       children: [
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        Icon(Icons.calendar_today, color: primaryColor),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            date == null
+                ? '${isStartDate ? "Date de début" : "Date de fin"} : Non sélectionnée'
+                : '${isStartDate ? "Date de début" : "Date de fin"} : ${date.toLocal()}'
+                    .split(' ')[0],
+            style: TextStyle(fontSize: 16),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: Colors.blue.shade700),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _dateDebut == null
-                            ? 'Date de début : Non sélectionnée'
-                            : 'Date de début : ${_dateDebut!.toLocal()}'.split(
-                              ' ',
-                            )[0],
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _selectDate(context, true),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue.shade700,
-                      ),
-                      child: Text('Sélectionner'),
-                    ),
-                  ],
-                ),
-                Divider(),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: Colors.blue.shade700),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _dateFin == null
-                            ? 'Date de fin : Non sélectionnée'
-                            : 'Date de fin : ${_dateFin!.toLocal()}'.split(
-                              ' ',
-                            )[0],
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _selectDate(context, false),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue.shade700,
-                      ),
-                      child: Text('Sélectionner'),
-                    ),
-                  ],
-                ),
-              ],
+        ),
+        TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: primaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
+          child: Text('Sélectionner'),
         ),
       ],
     );

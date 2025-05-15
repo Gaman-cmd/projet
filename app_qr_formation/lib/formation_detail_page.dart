@@ -274,6 +274,13 @@ class _FormationDetailPageState extends State<FormationDetailPage>
       return DateFormat('dd/MM/yyyy').format(date);
     }
 
+    String getFormateurName() {
+      if (formation.formateur != null) {
+        return "${formation.formateur!['prenom']} ${formation.formateur!['nom']}";
+      }
+      return 'Non assigné';
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -323,7 +330,7 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                         _buildDetailItem(
                           Icons.person,
                           'Formateur',
-                          'Non spécifié', // Remplacer si vous avez l'info
+                          getFormateurName(),
                           purpleColor,
                         ),
                       ],

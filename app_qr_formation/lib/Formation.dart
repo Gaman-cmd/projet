@@ -312,12 +312,13 @@ class _FormationsPageState extends State<FormationsPage> {
                         ),
                       ),
                       Text(
-                        '${formation.placesReservees}/${formation.placesTotal}',
+                        '${formation.nombreParticipantsAcceptes}/${formation.placesTotal}',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color:
-                              percentage >= 80
+                              formation.nombreParticipantsAcceptes >=
+                                      formation.placesTotal * 0.8
                                   ? AUFTheme.primaryColor
                                   : AUFTheme.secondaryColor,
                         ),
@@ -330,12 +331,13 @@ class _FormationsPageState extends State<FormationsPage> {
                     child: LinearProgressIndicator(
                       value:
                           formation.placesTotal > 0
-                              ? formation.placesReservees /
+                              ? formation.nombreParticipantsAcceptes /
                                   formation.placesTotal
                               : 0,
                       backgroundColor: Colors.grey[200],
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        percentage >= 80
+                        formation.nombreParticipantsAcceptes >=
+                                formation.placesTotal * 0.8
                             ? AUFTheme.primaryColor
                             : AUFTheme.accentGreen,
                       ),
