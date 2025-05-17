@@ -3,7 +3,8 @@ import 'add_formation_page.dart';
 import 'formation_detail_page.dart';
 import 'models/formation_model.dart';
 import 'services/formation_service.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart'
+//import 'ajout_formation.dart'; // Remplacez 'votre_projet' par le chemin de votre projet
 
 // Définition de la palette de couleurs inspirée du logo AUF
 class AUFTheme {
@@ -528,6 +529,60 @@ class _FormationsPageState extends State<FormationsPage> {
           style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
         ),
       ),
+    );
+  }
+}
+        backgroundColor: Colors.blue,
+        title: Text('Formations', style: TextStyle(color: Colors.white)), // Titre 'Formations' uniquement
+        leading: IconButton(
+          icon: Icon(Icons.menu, color: Colors.white),
+          onPressed: () {
+            // Action du menu
+          },
+        ),
+      body: ListView.builder(
+        padding: EdgeInsets.all(16.0),
+        itemCount: formations.length,
+        itemBuilder: (context, index) {
+          final formation = formations[index];
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(formation['title']!, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Row(
+                    children: <Widget>[
+                      Text(formation['date']!, style: TextStyle(color: Colors.grey[600])),
+                      SizedBox(width: 16),
+                      Text(formation['participants']!, style: TextStyle(color: Colors.grey[600])),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+         onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddTrainingPage()),
+    );
+  },
+        child: Icon(Icons.add),
+        backgroundColor: Colors.blue,
+      ),
+
+class ParticipantsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('Page des Participants'),
     );
   }
 }
