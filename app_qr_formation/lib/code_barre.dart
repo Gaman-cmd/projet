@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_import, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
@@ -6,9 +8,10 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'dart:math' as math;
+//import 'dart:math' as math;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert'; // Ajoutez ceci pour l'encodage JSON
 
 class CodeBarrePage extends StatefulWidget {
   final String name;
@@ -18,7 +21,7 @@ class CodeBarrePage extends StatefulWidget {
   final String lieuNaissance;
   final String formationTitre;
   final String formationDate;
-  final String qrCode;
+  final String qrCode; // Peut rester pour compatibilité
 
   const CodeBarrePage({
     super.key,
@@ -39,16 +42,31 @@ class CodeBarrePage extends StatefulWidget {
 class _CodeBarrePageState extends State<CodeBarrePage> {
   final GlobalKey _cardKey = GlobalKey();
 
+  /// Génère une chaîne JSON avec toutes les infos du participant
+  String _buildQrData() {
+    final data = {
+      "nom": widget.name,
+      "email": widget.email,
+      "telephone": widget.phoneNumber,
+      "date_naissance": widget.dateOfBirth,
+      "lieu_naissance": widget.lieuNaissance,
+      "formation": widget.formationTitre,
+      "date_formation": widget.formationDate,
+      "qr_code": widget.qrCode,
+    };
+    return jsonEncode(data);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final qrData = widget.qrCode;
+    final qrData = _buildQrData(); // Utilise la nouvelle méthode
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.indigo[800],
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
@@ -111,7 +129,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
         ),
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 7),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -233,7 +251,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
   Widget _infoHeader() {
     return Column(
       children: [
-        Stack(
+        /*Stack(
           alignment: Alignment.center,
           children: [
             Container(
@@ -264,13 +282,13 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 16),
+        ), */
+        //const SizedBox(height: 10),
         Text(
           widget.name,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.indigo[800],
             letterSpacing: 0.5,
@@ -300,7 +318,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(
         children: [
           _infoRow(Icons.school, 'Formation', widget.formationTitre),
@@ -341,7 +359,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           child: QrImageView(
             data: qrData,
             version: QrVersions.auto,
@@ -357,7 +375,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        /* const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -373,7 +391,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
               letterSpacing: 0.5,
             ),
           ),
-        ),
+        ),  */
       ],
     );
   }
@@ -497,23 +515,6 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
     return pdf;
   }
 
-  Future<Uint8List?> _captureCardImage() async {
-    try {
-      final RenderRepaintBoundary boundary =
-          _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      final ByteData? byteData = await image.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-      if (byteData != null) {
-        return byteData.buffer.asUint8List();
-      }
-    } catch (e) {
-      debugPrint('Erreur lors de la capture de l\'image: $e');
-    }
-    return null;
-  }
-
   pw.Widget _buildPdfCardManually(String qrData) {
     final initialsName = _initials(widget.name);
 
@@ -581,7 +582,7 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
                   child: pw.Column(
                     children: [
                       pw.BarcodeWidget(
-                        data: qrData,
+                        data: qrData, // Utilise la chaîne JSON
                         barcode: pw.Barcode.qrCode(),
                         width: 120,
                         height: 120,
@@ -701,5 +702,25 @@ class _CodeBarrePageState extends State<CodeBarrePage> {
     final parts = name.trim().split(' ');
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return (parts[0][0] + parts.last[0]).toUpperCase();
+  }
+
+  /// Capture l'image de la carte participant sous forme de Uint8List (PNG)
+  Future<Uint8List?> _captureCardImage() async {
+    try {
+      RenderRepaintBoundary boundary =
+          _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary;
+      if (boundary.debugNeedsPaint) {
+        await Future.delayed(const Duration(milliseconds: 20));
+        return _captureCardImage();
+      }
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Erreur lors de la capture de la carte: $e');
+      return null;
+    }
   }
 }

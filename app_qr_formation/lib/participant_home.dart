@@ -1,4 +1,7 @@
+// ignore_for_file: deprecated_member_use, avoid_print
+
 import 'package:flutter/material.dart';
+import 'config.dart';
 import 'formations_a_venir_page.dart';
 import 'statut_inscriptions_page.dart';
 import 'participant_profile_page.dart';
@@ -53,62 +56,93 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
     setState(() {
       isLoading = true;
     });
-
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       prenom = prefs.getString('prenom') ?? '';
     });
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final participantId = prefs.getInt('participant_id');
 
-    // Formations inscrites
-    final participantId = prefs.getInt('participant_id');
-    if (participantId != null) {
-      final response = await http.get(
-        Uri.parse(
-          'http://127.0.0.1:8000/api/inscriptions/?participant_id=$participantId',
-        ),
-      );
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
-        setState(() {
-          formationsInscrites = List<Map<String, dynamic>>.from(data);
-          nbInscriptions = formationsInscrites.length;
-        });
+      if (participantId != null) {
+        // Charger les formations inscrites
+        final response = await http.get(
+          Uri.parse(
+            '${AppConfig.apiBaseUrl}/api/inscriptions/?participant_id=$participantId',
+          ),
+        );
+
+        if (response.statusCode == 200) {
+          final List data = jsonDecode(response.body);
+          setState(() {
+            formationsInscrites = List<Map<String, dynamic>>.from(data);
+            nbInscriptions = formationsInscrites.length;
+          });
+
+          // Mettre à jour les statuts des formations
+          formationsInscrites =
+              formationsInscrites.map((inscription) {
+                final formation = inscription['formation'];
+                final DateTime dateDebut = DateTime.parse(
+                  formation['date_debut'],
+                );
+                final DateTime dateFin = DateTime.parse(formation['date_fin']);
+                final DateTime now = DateTime.now();
+
+                String statut;
+                if (now.isBefore(dateDebut)) {
+                  statut = 'a_venir';
+                } else if (now.isAfter(dateFin)) {
+                  statut = 'terminee';
+                } else {
+                  statut = 'en_cours';
+                }
+
+                formation['statut'] = statut;
+                return inscription;
+              }).toList();
+        }
+
+        // Charger les notifications
+        final notifResponse = await http.get(
+          Uri.parse(
+            '${AppConfig.apiBaseUrl}/api/notifications/$participantId/',
+          ),
+        );
+        if (notifResponse.statusCode == 200) {
+          final List notifData = jsonDecode(notifResponse.body);
+          setState(() {
+            notifications =
+                notifData
+                    .map<Map<String, String>>(
+                      (e) => {
+                        'message': (e['message'] ?? '').toString(),
+                        'date': (e['date'] ?? '').toString(),
+                      },
+                    )
+                    .toList();
+          });
+        }
       }
 
-      // Notifications dynamiques
-      final notifResponse = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/notifications/$participantId/'),
+      // Charger les formations à venir
+      final responseFormations = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/formations/formations_a_venir/'),
       );
-      if (notifResponse.statusCode == 200) {
-        final List notifData = jsonDecode(notifResponse.body);
+      if (responseFormations.statusCode == 200) {
+        final List dataFormations = jsonDecode(responseFormations.body);
         setState(() {
-          notifications =
-              notifData
-                  .map<Map<String, String>>(
-                    (e) => {
-                      'message': (e['message'] ?? '').toString(),
-                      'date': (e['date'] ?? '').toString(),
-                    },
-                  )
-                  .toList();
+          nbFormationsOuvertes = dataFormations.length;
         });
       }
-    }
-
-    // Formations à venir (ouvertes à tous)
-    final responseFormations = await http.get(
-      Uri.parse('http://127.0.0.1:8000/api/formations/formations_a_venir/'),
-    );
-    if (responseFormations.statusCode == 200) {
-      final List dataFormations = jsonDecode(responseFormations.body);
+    } catch (e) {
+      print('Erreur lors du chargement des données: $e');
+      // Afficher un message d'erreur à l'utilisateur si nécessaire
+    } finally {
       setState(() {
-        nbFormationsOuvertes = dataFormations.length;
+        isLoading = false;
       });
     }
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   void _onItemTapped(int index) {
@@ -127,6 +161,19 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
         return AUFColors.accent4; // Bleu
       default:
         return Colors.grey;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'a_venir':
+        return 'À venir';
+      case 'en_cours':
+        return 'En cours';
+      case 'terminee':
+        return 'Terminée';
+      default:
+        return status.isEmpty ? 'Inconnu' : status;
     }
   }
 
@@ -315,21 +362,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                             String statut = '';
                             final rawStatut =
                                 (f['statut'] ?? '').toString().toLowerCase();
-
-                            switch (rawStatut) {
-                              case 'a_venir':
-                                statut = 'À venir';
-                                break;
-                              case 'en_cours':
-                                statut = 'En cours';
-                                break;
-                              case 'terminee':
-                                statut = 'Terminée';
-                                break;
-                              default:
-                                statut =
-                                    rawStatut.isEmpty ? 'Inconnu' : rawStatut;
-                            }
+                            statut = _getStatusText(rawStatut);
 
                             return Card(
                               margin: EdgeInsets.only(bottom: 12),

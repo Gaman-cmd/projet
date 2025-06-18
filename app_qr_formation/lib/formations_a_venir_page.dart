@@ -1,7 +1,10 @@
+// ignore_for_file: library_private_types_in_public_api, prefer_collection_literals, unnecessary_null_comparison, unnecessary_to_list_in_spreads, use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
+import 'config.dart';
 import 'formation_detail_page.dart';
-import 'models/formation_model.dart';
-import 'services/formation_service.dart';
+//import 'models/formation_model.dart';
+//import 'services/formation_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -117,7 +120,7 @@ class _FormationsAVenirPageState extends State<FormationsAVenirPage>
     });
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/formations/formations_a_venir/'),
+        Uri.parse('${AppConfig.apiBaseUrl}/api/formations/formations_a_venir/'),
         headers: {"Content-Type": "application/json"},
       );
       if (response.statusCode == 200) {
@@ -193,7 +196,7 @@ class _FormationsAVenirPageState extends State<FormationsAVenirPage>
       }
 
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/api/inscription/'),
+        Uri.parse('${AppConfig.apiBaseUrl}/api/inscription/'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "participant_id": participantId,

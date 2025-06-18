@@ -1,9 +1,12 @@
-// ignore_for_file: use_super_parameters, library_private_types_in_public_api, deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: use_super_parameters, library_private_types_in_public_api, deprecated_member_use, use_build_context_synchronously, sort_child_properties_last, sized_box_for_whitespace, prefer_interpolation_to_compose_strings, unused_local_variable
 
 import 'package:flutter/material.dart';
-import 'ajout_participant.dart';
+//import 'ajout_participant.dart';
+import 'config.dart';
+import 'edit_formation_page.dart';
 import 'models/participant_model.dart';
 import 'models/session_model.dart';
+import 'participant_suivi_page.dart';
 import 'services/formation_service.dart';
 import 'models/formation_model.dart';
 import 'presence_management_page.dart';
@@ -97,7 +100,7 @@ class _FormationDetailPageState extends State<FormationDetailPage>
       }
 
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/api/inscription/'),
+        Uri.parse('${AppConfig.apiBaseUrl}/api/inscription/'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "participant_id": participantId,
@@ -138,6 +141,10 @@ class _FormationDetailPageState extends State<FormationDetailPage>
           title: Text('Détails de la formation'),
           backgroundColor: primaryColor,
           elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         body: Center(
           child: CircularProgressIndicator(
@@ -148,12 +155,13 @@ class _FormationDetailPageState extends State<FormationDetailPage>
     }
 
     final isParticipant = _role == 'participant';
+    final isAdmin = _role == 'admin';
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Détails de la formation',
@@ -161,15 +169,28 @@ class _FormationDetailPageState extends State<FormationDetailPage>
         ),
         backgroundColor: primaryColor,
         elevation: 2,
-        actions: [
-          if (!isParticipant)
+        /* actions: [
+          if (isAdmin)
             IconButton(
               icon: Icon(Icons.edit, color: Colors.white),
-              onPressed: () {
-                // Action pour modifier la formation
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => EditFormationPage(formation: formation),
+                  ),
+                );
+                if (result == true) {
+                  setState(() {
+                    _formationFuture = _formationService.getFormationDetails(
+                      widget.formationId,
+                    );
+                  });
+                }
               },
             ),
-        ],
+        ], */
       ),
       body: FutureBuilder<Formation>(
         future: _formationFuture,
@@ -238,6 +259,41 @@ class _FormationDetailPageState extends State<FormationDetailPage>
     return Column(
       children: [
         _buildFormationHeader(formation),
+        if (_role == 'admin')
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                right: 16.0,
+                top: 8.0,
+                bottom: 8.0,
+              ),
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.edit),
+                label: Text('Modifier'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => EditFormationPage(formation: formation),
+                    ),
+                  );
+                  if (result == true) {
+                    setState(() {
+                      _formationFuture = _formationService.getFormationDetails(
+                        widget.formationId,
+                      );
+                    });
+                  }
+                },
+              ),
+            ),
+          ),
         TabBar(
           controller: _tabController,
           labelColor: primaryColor,
@@ -261,7 +317,7 @@ class _FormationDetailPageState extends State<FormationDetailPage>
               SingleChildScrollView(
                 child: _buildParticipantsContent(formation),
               ),
-              SingleChildScrollView(child: _buildPresencesContent()),
+              SingleChildScrollView(child: _buildPresencesContent(formation)),
             ],
           ),
         ),
@@ -508,6 +564,19 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                               },
                             )
                             : null,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => ParticipantSuiviPage(
+                                participant: participant,
+                                formationId: widget.formationId,
+                                formationTitre: formation.titre,
+                              ),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
@@ -552,7 +621,10 @@ class _FormationDetailPageState extends State<FormationDetailPage>
     );
   }
 
-  Widget _buildPresencesContent() {
+  Widget _buildPresencesContent(Formation formation) {
+    // Vérifie si la formation est terminée
+    bool isFormationTerminee = formation.statutAuto == 'terminee';
+
     return FutureBuilder<List<Session>>(
       future: _sessionsFuture,
       builder: (context, snapshot) {
@@ -666,6 +738,9 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                                     seanceTitle: seanceTitle,
                                     seanceDetails:
                                         '$dateDebut • $heureDebut - $heureFin',
+                                    formationId:
+                                        formation
+                                            .id, // <-- Passe l'ID de la formation ici
                                   ),
                             ),
                           );
@@ -741,19 +816,55 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                   },
                 ),
               SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => _showAddSessionDialog(),
-                icon: Icon(Icons.add),
-                label: Text('Ajouter une séance'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              // Ajoute la condition pour n'afficher le bouton que pour les formateurs
+              if (_role == 'formateur')
+                if (isFormationTerminee)
+                  // Message d'erreur si la formation est terminée
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.red,
+                          size: 24,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'La formation est terminée. Vous ne pouvez plus créer de séances pour cette formation. Veuillez contacter votre administrateur.',
+                            style: TextStyle(
+                              color: Colors.red[700],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  // Bouton d'ajout de séance si la formation n'est pas terminée
+                  ElevatedButton.icon(
+                    onPressed:
+                        () => _showAddSessionDialog(
+                          formation,
+                        ), // Passe la formation ici
+                    icon: Icon(Icons.add),
+                    label: Text('Ajouter une séance'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      minimumSize: Size(double.infinity, 50),
+                    ),
                   ),
-                  minimumSize: Size(double.infinity, 50),
-                ),
-              ),
             ],
           ),
         );
@@ -761,7 +872,10 @@ class _FormationDetailPageState extends State<FormationDetailPage>
     );
   }
 
-  Future<void> _showAddSessionDialog() async {
+  Future<void> _showAddSessionDialog(Formation formation) async {
+    final DateTime formationDateDebut = formation.dateDebut;
+    final DateTime formationDateFin = formation.dateFin;
+
     final titreController = TextEditingController();
     DateTime? dateDebut;
     TimeOfDay? heureDebut;
@@ -991,6 +1105,20 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                       return;
                     }
 
+                    // Vérification de l'intervalle de dates
+                    if (dateDebut!.isBefore(formationDateDebut) ||
+                        dateDebut!.isAfter(formationDateFin)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "La date de la séance doit être comprise entre le ${DateFormat('dd/MM/yyyy').format(formationDateDebut)} et le ${DateFormat('dd/MM/yyyy').format(formationDateFin)}.",
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
                     // Combine date et heure
                     final dateTimeDebut = DateTime(
                       dateDebut!.year,
@@ -1057,10 +1185,16 @@ class _FormationDetailPageState extends State<FormationDetailPage>
       height: 200,
       child: Stack(
         children: [
+          // Affiche l'image de la formation si elle existe, sinon une image par défaut
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/images/formation.jpg'),
+                image:
+                    (formation.imageUrl.isNotEmpty &&
+                            formation.imageUrl.startsWith('http'))
+                        ? NetworkImage(formation.imageUrl)
+                        : AssetImage('assets/images/formation.jpg')
+                            as ImageProvider,
                 fit: BoxFit.cover,
               ),
             ),

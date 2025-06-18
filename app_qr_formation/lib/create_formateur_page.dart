@@ -1,7 +1,11 @@
+// ignore_for_file: use_key_in_widget_constructors, use_build_context_synchronously, deprecated_member_use, sized_box_for_whitespace
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'config.dart';
 
 class CreateFormateurPage extends StatefulWidget {
   @override
@@ -36,7 +40,7 @@ class _CreateFormateurPageState extends State<CreateFormateurPage> {
 
       try {
         final response = await http.post(
-          Uri.parse('http://127.0.0.1:8000/api/register_formateur/'),
+          Uri.parse('${AppConfig.apiBaseUrl}/api/register_formateur/'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'email': email,

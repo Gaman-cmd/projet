@@ -1,7 +1,7 @@
 class Attendance {
   final int id;
-  final int seance;
-  final int participant;
+  final Map<String, dynamic> seance;
+  final Map<String, dynamic> participant;
   final String statut;
   final DateTime dateScan;
 

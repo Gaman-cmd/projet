@@ -1,25 +1,26 @@
-// ignore_for_file: unnecessary_null_comparison
+// ignore_for_file: unnecessary_null_comparison, library_private_types_in_public_api, deprecated_member_use, avoid_print
 
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'Formation.dart';
-import 'ajout_participant.dart';
+import 'config.dart';
 import 'models/participant_model.dart';
+import 'models/formation_model.dart';
 import 'participants_page.dart';
 import 'services/formation_service.dart';
-import 'models/formation_model.dart';
-import 'add_formation_page.dart';
 import 'services/participant_service.dart';
 import 'admin_profile_page.dart';
 
-// Définition des couleurs basées sur le logo AUF
+// Définition des couleurs AUF
 class AUFTheme {
-  static const Color primary = Color(0xFFB01031); // Rouge AUF
-  static const Color secondary = Color(0xFF333333); // Gris foncé
-  static const Color accent1 = Color(0xFF2E9CCA); // Bleu
-  static const Color accent2 = Color(0xFFD6C909); // Jaune
-  static const Color accent3 = Color(0xFF82C341); // Vert
-  static const Color accent4 = Color(0xFF8E44AD); // Violet/Pourpre
-  static const Color background = Color(0xFFF5F7FA); // Fond gris clair
+  static const Color primary = Color(0xFFB01031);
+  static const Color secondary = Color(0xFF333333);
+  static const Color accent1 = Color(0xFF2E9CCA);
+  static const Color accent2 = Color(0xFFD6C909);
+  static const Color accent3 = Color(0xFF82C341);
+  static const Color accent4 = Color(0xFF8E44AD);
+  static const Color background = Color(0xFFF5F7FA);
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF333333);
   static const Color textSecondary = Color(0xFF6C757D);
@@ -107,12 +108,14 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
   List<Participant> _participants = [];
   bool _isLoading = true;
   String? _error;
+  List<Map<String, dynamic>> _recentActivities = [];
 
   @override
   void initState() {
     super.initState();
     _loadFormations();
     _loadParticipants();
+    _loadRecentActivities();
   }
 
   Future<void> _loadFormations() async {
@@ -142,6 +145,48 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
     }
   }
 
+  Future<void> _loadRecentActivities() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/activities/recent/'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _recentActivities = List<Map<String, dynamic>>.from(
+            data.map(
+              (activity) => {
+                'type': activity['type'] ?? '',
+                'title': activity['title'] ?? '',
+                'description': activity['description'] ?? '',
+                'created_at':
+                    activity['created_at'] != null
+                        ? DateTime.parse(activity['created_at'])
+                        : DateTime.now(),
+              },
+            ),
+          );
+        });
+      }
+    } catch (e) {
+      print('Erreur lors du chargement des activités: $e');
+      setState(() {
+        _recentActivities = [];
+      });
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,7 +196,6 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
         backgroundColor: AUFTheme.primary,
         title: Row(
           children: [
-            // Logo ou texte stylisé
             Text(
               'QR',
               style: TextStyle(
@@ -234,8 +278,15 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
               : RefreshIndicator(
                 color: AUFTheme.primary,
                 onRefresh: () async {
-                  await _loadFormations();
-                  await _loadParticipants();
+                  try {
+                    await Future.wait([
+                      _loadFormations(),
+                      _loadParticipants(),
+                      _loadRecentActivities(),
+                    ]);
+                  } catch (e) {
+                    _showError('Erreur lors du rafraîchissement');
+                  }
                 },
                 child: SingleChildScrollView(
                   physics: AlwaysScrollableScrollPhysics(),
@@ -353,7 +404,6 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
     );
   }
 
-  // Supposons que nous ayons ces méthodes pour compter les formations actives/complétées
   int _getActiveFormations() {
     final now = DateTime.now();
     return _formations
@@ -475,20 +525,19 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
   }
 
   Widget _buildFormationCard(Formation formation) {
-    // Déterminer le statut de la formation
     final now = DateTime.now();
     String status;
     Color statusColor;
 
     if (formation.dateDebut.isAfter(now)) {
       status = 'À venir';
-      statusColor = AUFTheme.accent2; // Jaune
+      statusColor = AUFTheme.accent2;
     } else if (formation.dateFin != null && formation.dateFin.isBefore(now)) {
       status = 'Terminée';
-      statusColor = AUFTheme.accent4; // Violet
+      statusColor = AUFTheme.accent4;
     } else {
       status = 'En cours';
-      statusColor = AUFTheme.accent3; // Vert
+      statusColor = AUFTheme.accent3;
     }
 
     return Container(
@@ -570,20 +619,27 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
   }
 
   Widget _buildRecentActivitySection() {
-    // Cette section pourrait montrer l'activité récente, comme des inscriptions,
-    // des mises à jour de formation, etc.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            'Activité récente',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AUFTheme.textPrimary,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Activité récente',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AUFTheme.textPrimary,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.refresh, color: AUFTheme.primary),
+                onPressed: _loadRecentActivities,
+              ),
+            ],
           ),
         ),
         Container(
@@ -600,7 +656,7 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
             ],
           ),
           child:
-              _participants.isEmpty
+              _recentActivities.isEmpty
                   ? Center(
                     child: Column(
                       children: [
@@ -620,32 +676,57 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
                       ],
                     ),
                   )
-                  : Column(
-                    children: [
-                      // Exemple d'activités récentes
-                      _buildActivityItem(
-                        'Inscription de ${_participants[0].nom}',
-                        'à la formation ${_formations.isNotEmpty ? _formations[0].titre : ""}',
-                        Icons.person_add,
-                        DateTime.now().subtract(Duration(hours: 2)),
-                      ),
-                      Divider(),
-                      _buildActivityItem(
-                        'Modification de la formation',
-                        _formations.length > 1 ? _formations[1].titre : '',
-                        Icons.edit,
-                        DateTime.now().subtract(Duration(days: 1)),
-                      ),
-                    ],
+                  : ListView.separated(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _recentActivities.length,
+                    separatorBuilder: (context, index) => Divider(),
+                    itemBuilder: (context, index) {
+                      final activity = _recentActivities[index];
+                      return _buildActivityItem(
+                        activity['title'] ?? '',
+                        activity['description'] ?? '',
+                        _getActivityIcon(activity['type'] ?? ''),
+                        activity['created_at'] is DateTime
+                            ? activity['created_at']
+                            : DateTime.parse(activity['created_at']),
+                      );
+                    },
                   ),
         ),
       ],
     );
   }
 
+  IconData _getActivityIcon(String type) {
+    switch (type) {
+      case 'formation':
+        return Icons.school_rounded;
+      case 'inscription':
+        return Icons.person_add_rounded;
+      case 'presence':
+        return Icons.check_circle_rounded;
+      default:
+        return Icons.access_time_rounded;
+    }
+  }
+
+  Color _getActivityColor(String type) {
+    switch (type) {
+      case 'formation':
+        return AUFTheme.accent1;
+      case 'inscription':
+        return AUFTheme.accent2;
+      case 'presence':
+        return AUFTheme.accent3;
+      default:
+        return AUFTheme.primary;
+    }
+  }
+
   Widget _buildActivityItem(
     String title,
-    String subtitle,
+    String description,
     IconData icon,
     DateTime time,
   ) {
@@ -655,31 +736,34 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AUFTheme.primary.withOpacity(0.1),
+              color: _getActivityColor(title).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AUFTheme.primary, size: 20),
+            child: Icon(icon, color: _getActivityColor(title), size: 20),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: AUFTheme.textPrimary,
                   ),
                 ),
                 Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 13, color: AUFTheme.textSecondary),
+                  description,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AUFTheme.textSecondary,
+                  ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   _formatTimeAgo(time),
                   style: TextStyle(
@@ -712,14 +796,5 @@ class __AccueilPageContentState extends State<_AccueilPageContent> {
     } else {
       return 'À l\'instant';
     }
-  }
-}
-
-class ProfilPage extends StatelessWidget {
-  const ProfilPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Page de Profil'));
   }
 }

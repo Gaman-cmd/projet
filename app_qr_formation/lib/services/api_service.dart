@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../config.dart';
+
 class ApiService {
   final String baseUrl =
-      "http://<http://127.0.0.1:8000/>"; // Remplacez par l'URL de votre backend
+      AppConfig.apiBaseUrl; // Remplacez par l'URL de votre backend
 
   Future<Map<String, dynamic>> login(String email, String motDePasse) async {
     final url = Uri.parse('$baseUrl/api/login/');

@@ -1,8 +1,11 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'services/formation_service.dart';
+import 'models/user_model.dart';
 
 class AddFormationPage extends StatefulWidget {
   const AddFormationPage({super.key});
@@ -32,6 +35,9 @@ class _AddFormationPageState extends State<AddFormationPage> {
   File? _imageFile;
   String? _imagePath; // Nouvelle variable pour stocker le chemin/URL de l'image
   final ImagePicker _picker = ImagePicker();
+
+  User? _selectedFormateur;
+  List<User> _formateurs = [];
 
   Future<void> _pickImage() async {
     try {
@@ -73,6 +79,7 @@ class _AddFormationPageState extends State<AddFormationPage> {
           'contact_email': _contactEmailController.text,
           'image_url': imageUrl,
           'statut': 'a_venir',
+          'formateur_id': _selectedFormateur?.id,
         });
         Navigator.pop(context);
       } catch (e) {
@@ -104,6 +111,27 @@ class _AddFormationPageState extends State<AddFormationPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadFormateurs();
+  }
+
+  Future<void> _loadFormateurs() async {
+    try {
+      final formateurs = await FormationService().getFormateurs();
+      setState(() {
+        _formateurs = formateurs;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors du chargement des formateurs : $e'),
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -112,6 +140,10 @@ class _AddFormationPageState extends State<AddFormationPage> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         backgroundColor: primaryColor,
       ),
       body: Container(
@@ -208,6 +240,42 @@ class _AddFormationPageState extends State<AddFormationPage> {
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Veuillez entrer un email de contact';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+                      DropdownButtonFormField<User>(
+                        value: _selectedFormateur,
+                        items:
+                            _formateurs.map((formateur) {
+                              return DropdownMenuItem<User>(
+                                value: formateur,
+                                child: Text(
+                                  '${formateur.prenom} ${formateur.nom}',
+                                ),
+                              );
+                            }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedFormateur = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Formateur',
+                          prefixIcon: Icon(Icons.person, color: primaryColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(
+                              color: primaryColor.withOpacity(0.2),
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: primaryColor.withOpacity(0.05),
+                        ),
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Veuillez sélectionner un formateur';
                           }
                           return null;
                         },

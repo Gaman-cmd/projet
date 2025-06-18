@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'config.dart';
+
 class AuthService {
-  final String baseUrl =
-      "http://127.0.0.1:8000"; // Remplace par l'URL de ton API
+  final String baseUrl = AppConfig.apiBaseUrl; // Remplace par l'URL de ton API
 
   // Fonction de connexion pour récupérer le token
   Future<Map<String, dynamic>> login(String email, String password) async {

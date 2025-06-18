@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../models/session_model.dart';
 
 class SessionService {
-  final String baseUrl = 'http://127.0.0.1:8000';
+  final String baseUrl = AppConfig.apiBaseUrl;
 
   Future<List<Session>> getSessionsByFormation(int formationId) async {
     final response = await http.get(

@@ -23,7 +23,7 @@ class Formation {
     required this.placesTotal,
     required this.placesReservees,
     required this.contactEmail,
-    this.imageUrl = '',
+    required this.imageUrl,
     required this.statut,
     this.formateur, // Ajoute ce paramètre
     required this.nombreParticipantsAcceptes,
@@ -41,7 +41,7 @@ class Formation {
       placesReservees:
           json['participants_acceptes'] ?? 0, // Modifie cette ligne
       contactEmail: json['contact_email'] ?? '',
-      imageUrl: json['image_url'] ?? '',
+      imageUrl: json['image_url'] ?? '', // <-- pas json['image_url'].toString()
       statut: json['statut'] ?? 'a_venir',
       formateur: json['formateur'], // Ajoute cette ligne
       nombreParticipantsAcceptes: json['nombre_participants_acceptes'] ?? 0,

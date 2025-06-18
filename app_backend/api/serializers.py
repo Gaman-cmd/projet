@@ -1,3 +1,4 @@
+#serializers.py
 from rest_framework import serializers
 from .models import Formation, Seance, Inscription, Presence, User
 
@@ -65,6 +66,7 @@ class FormationSerializer(serializers.ModelSerializer):
         required=False
     )
     nombre_participants_acceptes = serializers.SerializerMethodField()
+    image_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Formation
@@ -94,10 +96,35 @@ class InscriptionSerializer(serializers.ModelSerializer):
 
 class PresenceSerializer(serializers.ModelSerializer):
     participant = UserSerializer(read_only=True)
+    participant_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role='participant'),
+        source='participant',
+        write_only=True,
+        required=False
+    )
     seance = SeanceSerializer(read_only=True)
+    seance_id = serializers.PrimaryKeyRelatedField(
+        queryset=Seance.objects.all(),
+        source='seance',
+        write_only=True,
+        required=False
+    )
+    scanne_par = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role='formateur'),
+        required=False
+    )
 
     class Meta:
         model = Presence
         fields = [
-            'id', 'seance', 'participant', 'date_scan', 'statut', 'scanne_par'
+            'id', 'seance', 'seance_id', 'participant', 'participant_id',
+            'date_scan', 'statut', 'scanne_par'
         ]
+
+    def validate(self, data):
+        # Vérifie que participant et séance sont présents, sauf si on passe par une vue personnalisée (qr_code)
+        if not data.get('participant') and not self.context.get('allow_qr_only'):
+            raise serializers.ValidationError("participant_id est requis")
+        if not data.get('seance') and not self.context.get('allow_qr_only'):
+            raise serializers.ValidationError("seance_id est requis")
+        return data

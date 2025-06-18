@@ -1,3 +1,5 @@
+// ignore_for_file: file_names, library_private_types_in_public_api, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'add_formation_page.dart';
 import 'formation_detail_page.dart';
@@ -170,10 +172,9 @@ class _FormationsPageState extends State<FormationsPage> {
     }
 
     // Calcul du pourcentage de places réservées
-    final double percentage =
-        formation.placesTotal > 0
-            ? (formation.placesReservees / formation.placesTotal) * 100
-            : 0;
+    final int total = formation.placesTotal;
+    final int acceptes = formation.nombreParticipantsAcceptes;
+    final double percentage = (total > 0) ? (acceptes / total) * 100 : 0;
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),
@@ -198,156 +199,149 @@ class _FormationsPageState extends State<FormationsPage> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              // Bannière de statut
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                      ),
+        child: Column(
+          children: [
+            // Bannière de statut
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
                     ),
-                    SizedBox(width: 6),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    _getStatusLabel(statut),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: statusColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+
+            // Titre de la formation
+            Text(
+              formation.titre,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AUFTheme.secondaryColor,
+              ),
+            ),
+            SizedBox(height: 8),
+
+            // Description
+            Text(
+              formation.description,
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: 16),
+
+            // Informations de date et lieu
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: AUFTheme.primaryColor,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  _formatDate(formation.dateDebut),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 16, color: AUFTheme.primaryColor),
+                SizedBox(width: 6),
+                Text(
+                  formation.lieu,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+
+            // Barre de progression des places
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     Text(
-                      _getStatusLabel(statut),
+                      'Places réservées',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: statusColor,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    Text(
+                      '$acceptes/$total',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            acceptes >= total * 0.8
+                                ? AUFTheme.primaryColor
+                                : AUFTheme.secondaryColor,
                       ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(height: 12),
-
-              // Titre de la formation
-              Text(
-                formation.titre,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AUFTheme.secondaryColor,
+                SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: total > 0 ? acceptes / total : 0,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      acceptes >= total * 0.8
+                          ? AUFTheme.primaryColor
+                          : AUFTheme.accentGreen,
+                    ),
+                    minHeight: 6,
+                  ),
                 ),
-              ),
-              SizedBox(height: 8),
-
-              // Description
-              Text(
-                formation.description,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
+                SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${percentage.toStringAsFixed(0)}% places réservées',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: 16),
-
-              // Informations de date et lieu
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: AUFTheme.primaryColor,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    _formatDate(formation.dateDebut),
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.location_on,
-                    size: 16,
-                    color: AUFTheme.primaryColor,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    formation.lieu,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-
-              // Barre de progression des places
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Places réservées',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      Text(
-                        '${formation.nombreParticipantsAcceptes}/${formation.placesTotal}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              formation.nombreParticipantsAcceptes >=
-                                      formation.placesTotal * 0.8
-                                  ? AUFTheme.primaryColor
-                                  : AUFTheme.secondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value:
-                          formation.placesTotal > 0
-                              ? formation.nombreParticipantsAcceptes /
-                                  formation.placesTotal
-                              : 0,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        formation.nombreParticipantsAcceptes >=
-                                formation.placesTotal * 0.8
-                            ? AUFTheme.primaryColor
-                            : AUFTheme.accentGreen,
-                      ),
-                      minHeight: 6,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -522,10 +516,13 @@ class _FormationsPageState extends State<FormationsPage> {
           });
         },
         backgroundColor: AUFTheme.primaryColor,
-        icon: Icon(Icons.add),
+        icon: Icon(Icons.add, color: AUFTheme.white),
         label: Text(
           'Nouvelle formation',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            color: AUFTheme.white,
+          ),
         ),
       ),
     );

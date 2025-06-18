@@ -1,7 +1,11 @@
+// ignore_for_file: library_private_types_in_public_api, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
+import 'config.dart';
 
 class StatutInscriptionsPage extends StatefulWidget {
   const StatutInscriptionsPage({super.key});
@@ -45,7 +49,7 @@ class _StatutInscriptionsPageState extends State<StatutInscriptionsPage> {
 
       final response = await http.get(
         Uri.parse(
-          'http://127.0.0.1:8000/api/inscriptions/?participant_id=$participantId',
+          '${AppConfig.apiBaseUrl}/api/inscriptions/?participant_id=$participantId',
         ),
         headers: {"Content-Type": "application/json"},
       );

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result['status'] && result['user'] != null) {
       final user = result['user'];
       SharedPreferences prefs = await SharedPreferences.getInstance();
-
+      prefs.setInt('user_id', user['id']);
       if (user['role'] == 'admin') {
         prefs.setInt('admin_id', user['id']);
       }
@@ -308,8 +310,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(height: 24),
 
                     // Sign up
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
                       children: [
                         Text(
                           "Vous n'avez pas de compte ?",

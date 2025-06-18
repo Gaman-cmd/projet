@@ -1,7 +1,10 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'config.dart';
 import 'create_formateur_page.dart';
 
 class AdminProfilePage extends StatefulWidget {
@@ -84,7 +87,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
 
       try {
         final response = await http.put(
-          Uri.parse('http://127.0.0.1:8000/api/modifier_profil/$adminId/'),
+          Uri.parse('${AppConfig.apiBaseUrl}/api/modifier_profil/$adminId/'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'nom': _nomController.text,
@@ -423,6 +426,36 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                                     ),
                                   ],
                                 ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  icon: Icon(Icons.logout),
+                                  label: Text('Déconnexion'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: aufRed,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 15),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    // Efface les données de session
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    await prefs.clear();
+                                    // Redirige vers la page de login
+                                    if (context.mounted) {
+                                      Navigator.pushNamedAndRemoveUntil(
+                                        context,
+                                        '/login',
+                                        (route) => false,
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
                             ],
                           ),
                         ),

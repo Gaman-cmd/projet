@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, unused_field, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -271,26 +273,34 @@ class _ParticipantProfilePageState extends State<ParticipantProfilePage> {
               }
             },
           ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.logout),
-            label: const Text('Déconnexion'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: aufRed,
-              side: BorderSide(color: aufRed),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.logout),
+              label: Text('Déconnexion'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: aufRed,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              minimumSize: const Size(double.infinity, 54),
+              onPressed: () async {
+                // Efface les données de session
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                // Redirige vers la page de login
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/login',
+                    (route) => false,
+                  );
+                }
+              },
             ),
-            onPressed: () {
-              // Implémentez la déconnexion ici
-              // Par exemple :
-              // SharedPreferences prefs = await SharedPreferences.getInstance();
-              // prefs.clear();
-              // Navigator.of(context).pushReplacementNamed('/login');
-            },
           ),
         ],
       ),

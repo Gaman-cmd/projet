@@ -1,7 +1,7 @@
-// ignore_for_file: use_super_parameters, file_names
+// ignore_for_file: use_super_parameters, file_names, deprecated_member_use, sized_box_for_whitespace, unused_local_variable
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+//import 'package:qr_flutter/qr_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/participant_model.dart';
 import '../services/formation_service.dart';
@@ -192,7 +192,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
 
                 // Email
                 Text(
-                  p.email ?? '',
+                  p.email,
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.9),
@@ -228,9 +228,9 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
           children: [
             _infoRow(Icons.badge, 'Nom complet', '${p.prenom} ${p.nom}'),
             _divider(),
-            _infoRow(Icons.email, 'Email', p.email ?? '-'),
+            _infoRow(Icons.email, 'Email', p.email),
             _divider(),
-            _infoRow(Icons.phone, 'Téléphone', p.telephone ?? '-'),
+            _infoRow(Icons.phone, 'Téléphone', p.telephone),
             _divider(),
             _infoRow(Icons.cake, 'Date de naissance', p.dateNaissance ?? '-'),
             _divider(),
@@ -407,8 +407,8 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                               builder:
                                   (context) => CodeBarrePage(
                                     name: '${p.prenom} ${p.nom}',
-                                    email: p.email ?? '',
-                                    phoneNumber: p.telephone ?? '',
+                                    email: p.email,
+                                    phoneNumber: p.telephone,
                                     dateOfBirth: p.dateNaissance ?? '',
                                     lieuNaissance: p.lieuNaissance ?? '',
                                     formationTitre: f['titre'] ?? '',

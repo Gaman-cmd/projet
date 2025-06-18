@@ -2,10 +2,11 @@ import 'dart:async' show TimeoutException;
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../models/participant_model.dart';
 
 class ParticipantService {
-  final String baseUrl = 'http://127.0.0.1:8000'; // Pour l'émulateur Android
+  final String baseUrl = AppConfig.apiBaseUrl; // Pour l'émulateur Android
   // Utilisez 'localhost' pour iOS
 
   Future<Participant> createParticipant({

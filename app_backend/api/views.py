@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import viewsets, status, generics
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import Formation, Inscription, Presence, Seance, User
 from django.utils import timezone
@@ -12,6 +12,11 @@ from .serializers import (
     FormateurRegisterSerializer
 )
 import uuid
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import os
 
 class UtilisateurLoginView(APIView):
     def post(self, request):
@@ -128,6 +133,21 @@ class InscriptionView(APIView):
             participant = User.objects.get(id=participant_id, role='participant')
             formation = Formation.objects.get(id=formation_id)
             Inscription.objects.create(participant=participant, formation=formation)
+            if Inscription.objects.filter(participant=participant, formation=formation).exists():
+                return Response(
+                    {'error': 'Le participant est déjà inscrit à cette formation'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Vérifier les places disponibles
+            if formation.places_reservees >= formation.places_total:
+                return Response(
+                    {'error': 'Plus de places disponibles pour cette formation'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Mettre à jour le nombre de places réservées
+            formation.places_reservees += 1
+            formation.save()
             return Response({'message': 'Participant ajouté à la formation'}, status=status.HTTP_201_CREATED)
         except User.DoesNotExist:
             return Response({'error': 'Participant non trouvé'}, status=status.HTTP_404_NOT_FOUND)
@@ -235,3 +255,136 @@ def notifications_participant(request, participant_id):
                 "date": insc.date_inscription.strftime("%d/%m/%Y"),
             })
     return Response(notifications)
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_image(request):
+    image = request.FILES.get('image')
+    if not image:
+        return Response({'error': 'Aucun fichier reçu'}, status=status.HTTP_400_BAD_REQUEST)
+    path = default_storage.save(f'formations/{image.name}', ContentFile(image.read()))
+    image_url = request.build_absolute_uri(settings.MEDIA_URL + path)
+    return Response({'image_url': image_url}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def list_formateurs(request):
+    formateurs = User.objects.filter(role='formateur')
+    serializer = UserSerializer(formateurs, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def get_recent_activities(request):
+    """Récupère les activités récentes de manière dynamique"""
+    activities = []
+    
+    # Récupérer les 5 dernières formations
+    recent_formations = Formation.objects.all().order_by('-date_creation')[:5]
+    for formation in recent_formations:
+        activities.append({
+            'type': 'formation',
+            'title': 'Nouvelle formation',
+            'description': f'La formation "{formation.titre}" a été créée',
+            'created_at': formation.date_creation.isoformat(),
+        })
+
+    # Récupérer les 5 dernières inscriptions
+    recent_inscriptions = Inscription.objects.all().order_by('-date_inscription')[:5]
+    for inscription in recent_inscriptions:
+        activities.append({
+            'type': 'inscription',
+            'title': 'Nouvelle inscription',
+            'description': f'{inscription.participant.prenom} {inscription.participant.nom} s\'est inscrit à {inscription.formation.titre}',
+            'created_at': inscription.date_inscription.isoformat(),
+        })
+
+    # Récupérer les 5 dernières présences
+    recent_presences = Presence.objects.all().order_by('-date_scan')[:5]
+    for presence in recent_presences:
+        activities.append({
+            'type': 'presence',
+            'title': 'Présence enregistrée',
+            'description': f'Présence marquée pour {presence.participant.prenom} {presence.participant.nom}',
+            'created_at': presence.date_scan.isoformat(),
+        })
+
+    # Trier toutes les activités par date
+    activities.sort(key=lambda x: x['created_at'], reverse=True)
+    return Response(activities[:10])  # Retourner les 10 plus récentes
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Inscription, Seance, Presence, User
+from .serializers import PresenceSerializer
+
+@api_view(['POST'])
+def marquer_presence_par_qr(request):
+    """
+    Marquer la présence à partir d'un QR code (admin ou formateur).
+    """
+    qr_code = request.data.get('qr_code')
+    seance_id = request.data.get('seance_id')
+    statut = request.data.get('statut', 'present')
+    scanne_par_id = request.data.get('scanne_par')
+
+    if not qr_code or not seance_id:
+        return Response({'error': 'qr_code et seance_id requis'}, status=400)
+
+    try:
+        inscription = Inscription.objects.get(qr_code=qr_code, statut='accepte')
+        participant = inscription.participant
+        seance = Seance.objects.get(id=seance_id)
+        scanne_par = User.objects.filter(id=scanne_par_id).first() if scanne_par_id else None
+
+        presence, created = Presence.objects.get_or_create(
+            seance=seance,
+            participant=participant,
+            defaults={'statut': statut, 'scanne_par': scanne_par}
+        )
+
+        if not created:
+            presence.statut = statut
+            presence.scanne_par = scanne_par or presence.scanne_par
+            presence.save()
+
+        serializer = PresenceSerializer(presence)
+        return Response(serializer.data, status=201)
+
+    except Inscription.DoesNotExist:
+        return Response({'error': 'Inscription non trouvée ou refusée'}, status=404)
+    except Seance.DoesNotExist:
+        return Response({'error': 'Séance introuvable'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+class ParticipantPresencesView(APIView):
+    def get(self, request):
+        formation_id = request.query_params.get('formation_id')
+        participant_id = request.query_params.get('participant_id')
+        
+        if not formation_id or not participant_id:
+            return Response(
+                {"error": "Les paramètres formation_id et participant_id sont requis"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            presences = Presence.objects.filter(
+                seance__formation_id=formation_id,
+                participant_id=participant_id
+            ).order_by('seance__date_debut')
+            
+            if not presences.exists():
+                return Response(
+                    {"detail": "Aucune présence trouvée"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+            serializer = PresenceSerializer(presences, many=True)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

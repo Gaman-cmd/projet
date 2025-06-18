@@ -1,6 +1,9 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
+import 'config.dart';
 import 'services/participant_service.dart';
-import 'models/participant_model.dart';
+//import 'models/participant_model.dart';
 import 'models/formation_model.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -64,7 +67,7 @@ class _SelectParticipantsPageState extends State<SelectParticipantsPage> {
   ) async {
     final response = await http.post(
       Uri.parse(
-        'http://127.0.0.1:8000/api/inscriptions/$inscriptionId/valider/',
+        '${AppConfig.apiBaseUrl}/api/inscriptions/$inscriptionId/valider/',
       ),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'statut': statut}),
@@ -106,10 +109,22 @@ class _SelectParticipantsPageState extends State<SelectParticipantsPage> {
       appBar: AppBar(
         title: Text(
           'Valider les inscriptions',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.w500, color: Colors.white),
         ),
         backgroundColor: primaryColor,
         elevation: 0,
+        iconTheme: IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _loadInscriptions,
+            tooltip: 'Rafraîchir',
+          ),
+        ],
       ),
       body:
           _isLoading

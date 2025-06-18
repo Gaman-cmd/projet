@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../models/formation_model.dart';
+import '../models/user_model.dart';
 
 class FormationService {
-  final String baseUrl = 'http://127.0.0.1:8000';
+  final String baseUrl = AppConfig.apiBaseUrl;
 
   Future<List<Formation>> getFormations() async {
     try {
@@ -104,6 +106,27 @@ class FormationService {
       throw Exception(
         'Erreur lors de la récupération des formations du formateur',
       );
+    }
+  }
+
+  Future<List<User>> getFormateurs() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/formateurs/'));
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((json) => User.fromJson(json)).toList();
+    } else {
+      throw Exception('Erreur lors du chargement des formateurs');
+    }
+  }
+
+  Future<void> updateFormation(int id, Map<String, dynamic> data) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/formations/$id/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(data),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Erreur lors de la modification : ${response.body}');
     }
   }
 }
