@@ -6,7 +6,7 @@ import 'config.dart';
 import 'edit_formation_page.dart';
 import 'models/participant_model.dart';
 import 'models/session_model.dart';
-import 'participant_suivi_page.dart';
+//import 'participant_suivi_page.dart';
 import 'services/formation_service.dart';
 import 'models/formation_model.dart';
 import 'presence_management_page.dart';
@@ -564,7 +564,7 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                               },
                             )
                             : null,
-                    onTap: () {
+                    /*       onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -576,7 +576,7 @@ class _FormationDetailPageState extends State<FormationDetailPage>
                               ),
                         ),
                       );
-                    },
+                    },   */
                   ),
                 );
               },

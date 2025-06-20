@@ -1,3 +1,5 @@
+// ignore_for_file: use_key_in_widget_constructors, library_private_types_in_public_api, avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Importez le package intl
 
@@ -36,9 +38,7 @@ class _AddTrainingPageState extends State<AddTrainingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Ajouter une formation'),
-      ),
+      appBar: AppBar(title: Text('Ajouter une formation')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -66,9 +66,10 @@ class _AddTrainingPageState extends State<AddTrainingPage> {
                     child: TextFormField(
                       decoration: InputDecoration(labelText: 'Date de début'),
                       controller: TextEditingController(
-                        text: _startDate != null
-                            ? DateFormat.yMd().format(_startDate!)
-                            : '',
+                        text:
+                            _startDate != null
+                                ? DateFormat.yMd().format(_startDate!)
+                                : '',
                       ),
                       readOnly: true,
                     ),
@@ -85,7 +86,10 @@ class _AddTrainingPageState extends State<AddTrainingPage> {
                     child: TextFormField(
                       decoration: InputDecoration(labelText: 'Date de fin'),
                       controller: TextEditingController(
-                        text: _endDate != null ? DateFormat.yMd().format(_endDate!) : '',
+                        text:
+                            _endDate != null
+                                ? DateFormat.yMd().format(_endDate!)
+                                : '',
                       ),
                       readOnly: true,
                     ),

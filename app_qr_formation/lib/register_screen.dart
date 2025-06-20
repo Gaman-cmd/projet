@@ -26,15 +26,20 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _nomController = TextEditingController();
   final _prenomController = TextEditingController();
   final _telephoneController = TextEditingController();
   final _dateNaissanceController = TextEditingController();
   final _lieuNaissanceController = TextEditingController();
   String? _errorMessage;
-  bool _obscurePassword = true;
   bool _isLoading = false;
+
+  // Ajout pour le mot de passe dans le dialog
+  String _dialogPassword = '';
+  String _dialogConfirmPassword = '';
+  bool _dialogObscurePassword = true;
+  bool _dialogObscureConfirm = true;
+  String? _dialogError;
 
   // Liste des couleurs d'accent pour alterner sur les champs
   final List<Color> _accentColors = [
@@ -82,44 +87,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+      // Afficher le dialog pour mot de passe
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _buildPasswordDialog(),
+      );
+    }
+  }
 
-      try {
-        final result = await AuthService().register(
-          _emailController.text,
-          _passwordController.text,
-          _nomController.text,
-          _prenomController.text,
-          _telephoneController.text,
-          _dateNaissanceController.text,
-          _lieuNaissanceController.text,
+  Future<void> _finalRegister(String password) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await AuthService().register(
+        _emailController.text,
+        password,
+        _nomController.text,
+        _prenomController.text,
+        _telephoneController.text,
+        _dateNaissanceController.text,
+        _lieuNaissanceController.text,
+      );
+
+      if (result['status']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Inscription réussie ! Connectez-vous maintenant.'),
+            backgroundColor: Colors.green,
+          ),
         );
-
-        if (result['status']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Inscription réussie ! Connectez-vous maintenant.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pushReplacementNamed(context, '/login');
-        } else {
-          setState(() {
-            _errorMessage = result['message'];
-          });
-        }
-      } catch (e) {
+        Navigator.pushReplacementNamed(context, '/login');
+      } else {
         setState(() {
-          _errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
-        });
-      } finally {
-        setState(() {
-          _isLoading = false;
+          _errorMessage = result['message'];
         });
       }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -193,7 +207,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                _buildPasswordField(),
                 _buildInputField(
                   controller: _telephoneController,
                   label: 'Téléphone',
@@ -264,64 +277,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           labelText: label,
           labelStyle: TextStyle(color: Colors.black54),
           prefixIcon: Icon(icon, color: accentColor),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AUFColors.lightGrey),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: accentColor, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AUFColors.primaryRed, width: 1),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AUFColors.primaryRed, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    // Utiliser une couleur d'accent pour le champ de mot de passe
-    final accentColor = _getNextAccentColor();
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        controller: _passwordController,
-        obscureText: _obscurePassword,
-        cursorColor: AUFColors.primaryRed,
-        validator: (val) {
-          if (val!.isEmpty) return 'Ce champ est requis';
-          if (val.length < 6) {
-            return 'Le mot de passe doit contenir au moins 6 caractères';
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: 'Mot de passe',
-          labelStyle: TextStyle(color: Colors.black54),
-          prefixIcon: Icon(Icons.lock_outline, color: accentColor),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscurePassword
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              color: AUFColors.lightGrey,
-            ),
-            onPressed: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: AUFColors.lightGrey),
@@ -436,6 +391,121 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // Dialog pour mot de passe et confirmation
+  Widget _buildPasswordDialog() {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: Text('Définir un mot de passe'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                obscureText: _dialogObscurePassword,
+                onChanged: (val) {
+                  setState(() => _dialogPassword = val);
+                },
+                decoration: InputDecoration(
+                  labelText: 'Mot de passe',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _dialogObscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _dialogObscurePassword = !_dialogObscurePassword;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                obscureText: _dialogObscureConfirm,
+                onChanged: (val) {
+                  setState(() => _dialogConfirmPassword = val);
+                },
+                decoration: InputDecoration(
+                  labelText: 'Confirmer le mot de passe',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _dialogObscureConfirm
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _dialogObscureConfirm = !_dialogObscureConfirm;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              if (_dialogError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12.0),
+                  child: Text(
+                    _dialogError!,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Réinitialiser les champs du dialog
+                _dialogPassword = '';
+                _dialogConfirmPassword = '';
+                _dialogError = null;
+                Navigator.of(context).pop();
+              },
+              child: Text('Annuler'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AUFColors.primaryRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (_dialogPassword.isEmpty || _dialogConfirmPassword.isEmpty) {
+                  setState(
+                    () => _dialogError = 'Veuillez remplir les deux champs',
+                  );
+                  return;
+                }
+                if (_dialogPassword.length < 6) {
+                  setState(
+                    () =>
+                        _dialogError =
+                            'Le mot de passe doit contenir au moins 6 caractères',
+                  );
+                  return;
+                }
+                if (_dialogPassword != _dialogConfirmPassword) {
+                  setState(
+                    () =>
+                        _dialogError = 'Les mots de passe ne correspondent pas',
+                  );
+                  return;
+                }
+                Navigator.of(context).pop();
+                await _finalRegister(_dialogPassword);
+                // Réinitialiser les champs du dialog après l'inscription
+                _dialogPassword = '';
+                _dialogConfirmPassword = '';
+                _dialogError = null;
+              },
+              child: Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
